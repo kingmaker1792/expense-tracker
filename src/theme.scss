@@ -94,3 +94,42 @@ main{padding-inline:48px}header{border-color:#dde5f0}header h1{font-size:25px;le
 .delete-button{width:34px;height:34px;display:inline-grid;place-items:center;flex:0 0 auto;border:1px solid #fecaca;border-radius:9px;background:#fff5f5;color:#dc2626;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}.delete-button svg{width:17px;height:17px;fill:currentColor}.delete-button:hover{background:#fee2e2;border-color:#f87171;color:#b91c1c;transform:translateY(-1px)}.delete-button:focus-visible{outline:3px solid #fecaca;outline-offset:2px}
 .confirm-layer{z-index:60}.confirm-modal{width:min(420px,100%);padding:28px;background:#fff;border-radius:20px;box-shadow:0 28px 80px #0f172a55;text-align:center;animation:slide .2s ease}.confirm-icon{width:54px;height:54px;margin:0 auto 15px;display:grid;place-items:center;border-radius:16px;background:#fee2e2;color:#dc2626}.confirm-icon svg{width:26px;height:26px;fill:currentColor}.confirm-modal .eyebrow{color:#dc2626}.confirm-modal h3{margin:6px 0 9px;font-size:21px}.confirm-modal>p:not(.eyebrow){max-width:330px;margin:0 auto;color:#64748b;font-size:12px;line-height:1.55}.confirm-summary{margin:18px 0 3px;padding:12px 14px;display:flex;justify-content:space-between;align-items:center;border-radius:10px;background:#f8fafc;color:#64748b;font-size:11px}.confirm-summary strong{color:#172554;font-size:14px}.confirm-modal .modal-actions{margin-top:19px;padding-top:0}.danger-button{min-height:38px;padding:9px 15px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border-radius:9px;background:#dc2626;color:#fff;font-size:11px;font-weight:800}.danger-button:hover{background:#b91c1c}.danger-button svg{width:15px;height:15px;fill:currentColor}
 @media(max-width:520px){.confirm-modal{padding:24px 20px;border-radius:18px}.confirm-modal .modal-actions{display:grid;grid-template-columns:1fr 1fr}.confirm-modal .modal-actions button{width:100%;min-height:43px}}
+
+/* Keep every mobile layout inside the viewport; wide data becomes stacked cards. */
+.app-shell, main, .panel, .stat-grid > *, .dashboard-grid > *, .analytics-grid > *,
+.order-stats > *, .entry-form > *, .order-top > *, .order-detail > *,
+.panel-head > *, .people-list > *, .upcoming > *, .client-list > * {
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .app-shell, main, header, section, article, form { max-width: 100%; }
+  main { width: auto; overflow-x: clip; }
+  input, select, textarea, button { max-width: 100%; }
+  h1, h2, h3, p, strong, small, span { overflow-wrap: anywhere; }
+
+  .profit-months {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .profit-months > div { width: auto; min-width: 0; }
+  .profit-months > div:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+  .period-filter {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
+  }
+  .period-filter button { min-width: 0; }
+  .order-actions { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .order-actions .status-select { width: 100%; min-width: 0; }
+}
+
+@media (max-width: 380px) {
+  main { padding-inline: 10px; }
+  .intro-row, .page-lead, .panel, .entry-form { padding-inline: 14px; }
+  .stat-card { padding-inline: 13px; }
+  .stat-card h3, .order-stats strong { font-size: 17px !important; }
+  .order-actions { grid-template-columns: minmax(0, 1fr) auto; }
+  .order-actions .delete-button { grid-column: 2; }
+}
