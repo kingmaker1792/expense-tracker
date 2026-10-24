@@ -1,1 +1,8 @@
-/* You can add global styles to this file, and also import other style files */
+@use './theme.scss';
+
+:root { color-scheme: light; font-family: Inter, 'Segoe UI', sans-serif; color: #14213d; background: #f5f8fc; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: #f5f8fc; }
+button, input, select { font: inherit; }
+button, select { cursor: pointer; }

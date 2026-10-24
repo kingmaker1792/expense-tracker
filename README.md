@@ -1,4 +1,6 @@
-# ExpenseTracker
+# Mannam Expense Tracker
+
+Angular and Firebase application for tracking business expenses and orders.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.8.
 
@@ -35,6 +37,20 @@ ng build
 ```
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+
+## Deployment
+
+Pushes to `master` are built and deployed to the `mannam-expense` Firebase Hosting site by GitHub Actions. Pull requests receive Firebase preview deployments.
+
+The workflows require the repository secret `FIREBASE_SERVICE_ACCOUNT_COGNYLYNC`, matching the Firebase project configured in `.firebaserc`.
+
+The production `firestore.rules` file is intentionally kept out of this public repository because it contains the private family-member allowlist. Hosting workflows deploy only the web application.
+
+For a manual deployment from an authenticated workstation, run:
+
+```bash
+npm run deploy:firebase
+```
 
 ## Running unit tests
 

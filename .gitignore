@@ -9,6 +9,7 @@
 # Node
 /node_modules
 npm-debug.log
+firebase-debug.log
 yarn-error.log
 
 # IDEs and editors
@@ -34,6 +35,8 @@ yarn-error.log
 .sass-cache/
 /connect.lock
 /coverage
+/\.firebase
+/firestore.rules
 /libpeerconnection.log
 testem.log
 /typings

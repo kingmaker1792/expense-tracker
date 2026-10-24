@@ -1,0 +1,12 @@
+{
+  "projects": {
+    "default": "cognylync"
+  },
+  "targets": {
+    "cognylync": {
+      "hosting": {
+        "mannam-expense": ["mannam-expense"]
+      }
+    }
+  }
+}
