@@ -141,3 +141,16 @@ main{padding-inline:48px}header{border-color:#dde5f0}header h1{font-size:25px;le
   .order-actions { grid-template-columns: minmax(0, 1fr) auto; }
   .order-actions .delete-button { grid-column: 2; }
 }
+
+/* Exact calendar-month expense picker. */
+.expense-period { gap: 12px; }
+.expense-period > div:first-child { margin-right: auto; }
+.month-select { min-height: 39px; padding: 8px 28px 8px 11px; border: 1px solid #d6deeb; border-radius: 10px; background: #fff; color: #334155; font-size: 10px; font-weight: 700; }
+.contribution-value { min-width: 74px; display: grid; justify-items: end; gap: 2px; }.contribution-value small { color: var(--muted); font-size: 8px; font-weight: 800; }.contribution-head { gap: 12px; }.contribution-list > div { grid-template-columns: 32px 90px 1fr auto; }
+.expense-chart.twelve-month { grid-template-columns: repeat(auto-fit, minmax(20px, 1fr)); gap: 5px; }
+.expense-chart > .empty-state { grid-column: 1 / -1; align-self: center; }
+@media (max-width: 720px) {
+  .expense-period .month-select { width: 100%; min-height: 43px; font-size: 12px; }
+  .contribution-head { align-items: flex-start; }.contribution-head .month-select { max-width: 48%; }.contribution-list > div { grid-template-columns: 32px 68px 1fr auto; }
+  .expense-chart.twelve-month { gap: 2px; }.expense-chart.twelve-month .expense-bars i { width: 5px; }.expense-chart.twelve-month small { font-size: 6px; writing-mode: vertical-rl; transform: rotate(180deg); }
+}
