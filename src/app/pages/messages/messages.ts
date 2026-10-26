@@ -4,13 +4,13 @@ import { ClientHistory, FirebaseDataService, MessageTemplate } from '../../fireb
 type DraftTemplate = Pick<MessageTemplate,'title'|'category'|'message'> & { id:string; ready?:boolean };
 
 const READY_TEMPLATES: DraftTemplate[] = [
-  {id:'diwali',ready:true,category:'Festival',title:'Diwali wishes',message:'🪔 Happy Diwali, {name}! May your celebration be filled with light, joy and sweet moments. Warm wishes from Mannam Cakes. ✨'},
-  {id:'holi',ready:true,category:'Festival',title:'Holi wishes',message:'🌈 Happy Holi, {name}! Wishing you a colourful day filled with happiness, laughter and delicious celebrations. — Mannam Cakes'},
-  {id:'eid',ready:true,category:'Festival',title:'Eid wishes',message:'🌙 Eid Mubarak, {name}! May this special occasion bring peace, happiness and beautiful moments to your family. — Mannam Cakes'},
-  {id:'christmas',ready:true,category:'Festival',title:'Christmas wishes',message:'🎄 Merry Christmas, {name}! Wishing you and your family a joyful season filled with love and sweetness. — Mannam Cakes'},
-  {id:'new-year',ready:true,category:'Festival',title:'New Year wishes',message:'✨ Happy New Year, {name}! Thank you for being part of our journey. Wishing you a year full of joyful celebrations. — Mannam Cakes'},
-  {id:'festival-offer',ready:true,category:'Offer',title:'Festival special offer',message:'🎉 Hello {name}! Our festival specials are now open for booking. Enjoy a special offer on selected cakes for a limited time. Reply here to know today’s flavours and availability. — Mannam Cakes'},
-  {id:'returning-client',ready:true,category:'Offer',title:'Returning client offer',message:'💛 Hello {name}! We would love to make your next celebration sweeter. As a returning client, ask us about your special booking offer. — Mannam Cakes'},
+  {id:'diwali',ready:true,category:'Festival',title:'Diwali wishes',message:'🪔 Happy Diwali, {name}! May your celebration be filled with light, joy and sweet moments. Warm wishes from The Perfect Cake Bakery. ✨'},
+  {id:'holi',ready:true,category:'Festival',title:'Holi wishes',message:'🌈 Happy Holi, {name}! Wishing you a colourful day filled with happiness, laughter and delicious celebrations. — The Perfect Cake Bakery'},
+  {id:'eid',ready:true,category:'Festival',title:'Eid wishes',message:'🌙 Eid Mubarak, {name}! May this special occasion bring peace, happiness and beautiful moments to your family. — The Perfect Cake Bakery'},
+  {id:'christmas',ready:true,category:'Festival',title:'Christmas wishes',message:'🎄 Merry Christmas, {name}! Wishing you and your family a joyful season filled with love and sweetness. — The Perfect Cake Bakery'},
+  {id:'new-year',ready:true,category:'Festival',title:'New Year wishes',message:'✨ Happy New Year, {name}! Thank you for being part of our journey. Wishing you a year full of joyful celebrations. — The Perfect Cake Bakery'},
+  {id:'festival-offer',ready:true,category:'Offer',title:'Festival special offer',message:'🎉 Hello {name}! Our festival specials are now open for booking. Enjoy a special offer on selected cakes for a limited time. Reply here to know today’s flavours and availability. — The Perfect Cake Bakery'},
+  {id:'returning-client',ready:true,category:'Offer',title:'Returning client offer',message:'💛 Hello {name}! We would love to make your next celebration sweeter. As a returning client, ask us about your special booking offer. — The Perfect Cake Bakery'},
 ];
 
 @Component({selector:'app-messages',templateUrl:'./messages.html'})

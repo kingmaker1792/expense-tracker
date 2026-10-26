@@ -1,4 +1,4 @@
-# Mannam Expense Tracker
+# The Perfect Cake Bakery
 
 Angular and Firebase application for tracking business expenses and orders.
 
