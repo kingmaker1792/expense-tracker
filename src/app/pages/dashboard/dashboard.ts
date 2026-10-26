@@ -70,7 +70,7 @@ export class Dashboard {
     const map = new Map<string, { name:string; phone:string; total:number; orders:number; quantity:number }>();
     const now=new Date(); const start=this.monthKey(new Date(now.getFullYear(),now.getMonth()-11,1)); const end=this.monthKey(now);
     for (const order of this.data.orders().filter(item=>item.dueDate.slice(0,7)>=start&&item.dueDate.slice(0,7)<=end)) {
-      const key = `${order.customer}\u0000${order.phone}`;
+      const key = `${order.customer.trim().toLocaleLowerCase()}\u0000${order.phone.replace(/\D/g,'')}`;
       const item=map.get(key) ?? {name:order.customer,phone:order.phone,total:0,orders:0,quantity:0};
       item.total+=this.orderValue(order); item.orders++; item.quantity+=order.quantity; map.set(key,item);
     }

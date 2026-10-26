@@ -28,6 +28,11 @@ export interface CakeOrder {
   deliveryAmount: number; extraExpenses: number; dueDate: string; status: OrderStatus;
 }
 
+export interface ClientHistory {
+  key: string; name: string; phone: string; address: string; orderCount: number;
+  lifetimeValue: number; lastOrderDate: string; orders: CakeOrder[];
+}
+
 const DEFAULT_FREQUENT_EXPENSES: Record<ExpenseType, string[]> = {
   cake: ['Cake boxes', 'Chocolate compound', 'Flour & sugar', 'Fresh cream', 'Fresh fruit'],
   home: ['Electricity bill', 'Gas cylinder', 'Groceries', 'Internet bill', 'Milk'],
@@ -57,6 +62,23 @@ export class FirebaseDataService {
     name,
     total: this.expenses().filter(item => item.paidBy === name && this.isCurrentMonth(item.date)).reduce((sum, item) => sum + item.amount, 0),
   })));
+  readonly clients = computed<ClientHistory[]>(() => {
+    const grouped = new Map<string, ClientHistory>();
+    const orders = [...this.orders()].sort((a, b) => b.dueDate.localeCompare(a.dueDate));
+    for (const order of orders) {
+      const key = this.clientKey(order.customer, order.phone);
+      const client = grouped.get(key) ?? {
+        key, name: order.customer.trim(), phone: order.phone.trim(), address: order.address.trim(),
+        orderCount: 0, lifetimeValue: 0, lastOrderDate: order.dueDate, orders: [],
+      };
+      client.orderCount += 1;
+      client.lifetimeValue += order.amount + order.deliveryAmount;
+      client.orders.push(order);
+      if (!client.address && order.address.trim()) client.address = order.address.trim();
+      grouped.set(key, client);
+    }
+    return [...grouped.values()].sort((a, b) => b.lastOrderDate.localeCompare(a.lastOrderDate));
+  });
 
   private db?: Firestore;
   private dbPromise?: Promise<Firestore>;
@@ -98,10 +120,16 @@ export class FirebaseDataService {
   async addOrder(order: Omit<CakeOrder, 'id'>): Promise<void> { await this.runOperation('Saving order…', async () => { const db = await this.getDb(); await addDoc(collection(db, 'orders'), order); }); }
   async updateOrder(order: CakeOrder): Promise<void> { await this.runOperation('Updating order…', async () => { const db = await this.getDb(); const { id, ...data } = order; await setDoc(doc(db, 'orders', id), data); }); }
   async deleteOrder(id: string): Promise<void> { await this.runOperation('Deleting order…', async () => { const db = await this.getDb(); await deleteDoc(doc(db, 'orders', id)); }); }
-  async updateOrderStatus(id: string, status: OrderStatus): Promise<void> { await this.runOperation('Updating order status…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { status }); }); }
+  async updateOrderStatus(id: string, status: OrderStatus): Promise<OrderStatus> {
+    const order = this.orders().find(item => item.id === id); if (!order) throw new Error('Order not found.');
+    const nextStatus: OrderStatus = status === 'Delivered' && order.advancePaid >= order.amount + order.deliveryAmount ? 'Closed' : status;
+    await this.runOperation('Updating order status…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { status: nextStatus }); });
+    return nextStatus;
+  }
   async markOrderFullyPaid(id: string): Promise<void> {
     const order = this.orders().find(item => item.id === id); if (!order) throw new Error('Order not found.');
-    await this.runOperation('Completing payment…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { advancePaid: order.amount + order.deliveryAmount, status: 'Closed' }); });
+    const status: OrderStatus = order.status === 'Delivered' ? 'Closed' : order.status;
+    await this.runOperation('Completing payment…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { advancePaid: order.amount + order.deliveryAmount, status }); });
   }
 
   private async initializeAuth(): Promise<void> {
@@ -165,4 +193,5 @@ export class FirebaseDataService {
   private markLoaded(collectionName: string): void { this.loadedCollections.add(collectionName); if (this.loadedCollections.size >= 2) this.loading.set(false); }
   private reportError(error: unknown): void { console.error(error); this.loading.set(false); this.backendError.set(error instanceof Error ? error.message : 'Unable to connect to Firebase.'); }
   private isCurrentMonth(value: string): boolean { const date = new Date(`${value}T00:00:00`); const now = new Date(); return date.getFullYear() === now.getFullYear() && date.getMonth() === now.getMonth(); }
+  private clientKey(name: string, phone: string): string { return `${name.trim().toLocaleLowerCase()}|${phone.replace(/\D/g, '')}`; }
 }

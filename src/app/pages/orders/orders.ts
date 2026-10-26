@@ -1,18 +1,22 @@
 import { SlicePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CakeOrder, FirebaseDataService, OrderStatus } from '../../firebase-data.service';
+import { CakeOrder, ClientHistory, FirebaseDataService, OrderStatus } from '../../firebase-data.service';
+
+type OrderFilter = 'all' | OrderStatus | 'delivered-paid' | 'delivered-unpaid';
 
 @Component({ selector: 'app-orders', imports: [ReactiveFormsModule, SlicePipe], templateUrl: './orders.html' })
 export class Orders {
   private readonly fb = inject(FormBuilder); readonly data = inject(FirebaseDataService);
   readonly weights = Array.from({ length: 60 }, (_, index) => `${(index + 1) / 2} lb`);
   readonly showForm = signal(false); readonly deliveryModal = signal(false); readonly editingId = signal<string|null>(null); readonly deleteTarget = signal<CakeOrder|null>(null);
-  readonly filter = signal<'all' | OrderStatus>('all'); readonly months = signal<1|3|6|12|'all'>(1); readonly selectedMonth = signal(''); readonly toast = signal('');
+  readonly filter = signal<OrderFilter>('all'); readonly months = signal<1|3|6|12|'all'>(1); readonly selectedMonth = signal(''); readonly toast = signal('');
+  readonly clientMode = signal<'existing'|'new'>('existing'); readonly clientSearch = signal(''); readonly clientPickerOpen = signal(false);
+  readonly clientMatches = computed(() => { const q=this.clientSearch().trim().toLocaleLowerCase(); return this.data.clients().filter(client=>!q||`${client.name} ${client.phone}`.toLocaleLowerCase().includes(q)).slice(0,8); });
   readonly filtered = computed(() => {
     const now = new Date(); const period = this.months(); const exactMonth=this.selectedMonth(); const start = new Date(now.getFullYear(), now.getMonth() - (period==='all'?12:period) + 1, 1); const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
     return this.data.orders().filter(o => { if(exactMonth) return o.dueDate.startsWith(exactMonth); const date = new Date(`${o.dueDate}T00:00:00`); return date >= start && date <= end; })
-      .filter(o => this.filter() === 'all' || o.status === this.filter()).sort((a,b) => b.dueDate.localeCompare(a.dueDate));
+      .filter(o => { const filter=this.filter(); if(filter==='all') return true; if(filter==='delivered-paid') return (o.status==='Delivered'||o.status==='Closed')&&this.balance(o)===0; if(filter==='delivered-unpaid') return o.status==='Delivered'&&this.balance(o)>0; return o.status===filter; }).sort((a,b) => b.dueDate.localeCompare(a.dueDate));
   });
   readonly filteredStats = computed(() => {
     const orders = this.filtered();
@@ -37,11 +41,12 @@ export class Orders {
     const v=this.form.getRawValue();
     const pieceProduct=this.isPieceProduct(v.cakeType);
     if (this.form.invalid || (!pieceProduct && !v.cakeWeight) || (v.setup !== 'Self pickup' && !v.address.trim()) || (v.setup === 'Delivery' && !v.deliveredBy.trim())) { this.form.markAllAsTouched(); this.notify('Please complete all required order details.', true); return; }
-    const total=Number(v.amount)+Number(v.deliveryAmount); const paid=Number(v.advancePaid); const status:OrderStatus = paid >= total ? 'Closed' : v.status === 'Closed' ? 'Delivered' : v.status;
+    const total=Number(v.amount)+(v.setup==='Delivery'?Number(v.deliveryAmount):0); const paid=Number(v.advancePaid); const status:OrderStatus = v.status === 'Delivered' && paid >= total ? 'Closed' : v.status === 'Closed' ? 'Delivered' : v.status;
     const id=this.editingId(); const record={ ...v, id:id??'', phone:v.phone.trim(), amount:Number(v.amount), advancePaid:paid, deliveryAmount:v.setup==='Delivery'?Number(v.deliveryAmount):0, deliveredBy:v.setup==='Delivery'?v.deliveredBy:'', extraExpenses:Number(v.extraExpenses), quantity:pieceProduct?Number(v.quantity):1, cakeWeight:pieceProduct?'':v.cakeWeight, status } as CakeOrder;
     try { if(id) await this.data.updateOrder(record); else { const {id:_,...newOrder}=record; await this.data.addOrder(newOrder); } this.notify(id ? 'Order updated successfully.' : 'Cake order added successfully.'); this.closeForm(); } catch { this.notify('Unable to save order. Check Firebase access.', true); }
   }
-  edit(order:CakeOrder):void { this.editingId.set(order.id); this.form.reset(order); this.showForm.set(true); window.scrollTo({top:80,behavior:'smooth'}); }
+  openNewOrder():void { this.closeForm(); this.clientMode.set(this.data.clients().length?'existing':'new'); this.showForm.set(true); }
+  edit(order:CakeOrder):void { this.editingId.set(order.id); this.form.reset(order); this.clientMode.set('new'); this.clientSearch.set(''); this.clientPickerOpen.set(false); this.showForm.set(true); window.scrollTo({top:80,behavior:'smooth'}); }
   requestRemove(order:CakeOrder):void { this.deleteTarget.set(order); }
   async confirmRemove():Promise<void> {
     const order=this.deleteTarget(); if(!order) return;
@@ -49,15 +54,19 @@ export class Orders {
     try { await this.data.deleteOrder(order.id); this.notify(`${order.customer}'s order deleted.`); }
     catch { this.notify('Unable to delete order.', true); }
   }
-  closeForm():void { this.showForm.set(false); this.editingId.set(null); this.form.reset(this.defaults()); }
+  closeForm():void { this.showForm.set(false); this.editingId.set(null); this.clientSearch.set(''); this.clientPickerOpen.set(false); this.form.reset(this.defaults()); }
+  updateClientSearch(event:Event):void { this.clientSearch.set((event.target as HTMLInputElement).value); this.form.patchValue({customer:'',phone:'',address:''}); this.clientPickerOpen.set(true); }
+  selectClient(client:ClientHistory):void { this.form.patchValue({customer:client.name,phone:client.phone,address:client.address}); this.clientSearch.set(`${client.name} · ${client.phone}`); this.clientPickerOpen.set(false); }
+  useNewClient():void { const name=this.form.controls.customer.value?'':this.clientSearch().trim(); this.clientMode.set('new'); this.clientPickerOpen.set(false); this.form.patchValue({customer:name,phone:'',address:''}); }
+  useExistingClient():void { this.clientMode.set('existing'); this.clientSearch.set(''); this.clientPickerOpen.set(false); this.form.patchValue({customer:'',phone:'',address:''}); }
   onProductTypeChange(event:Event):void { const cakeType=(event.target as HTMLSelectElement).value; this.form.controls.cakeType.setValue(cakeType); this.form.patchValue(this.isPieceProduct(cakeType)?{cakeWeight:'',quantity:1}:{quantity:1}); }
   onSetupChange(event:Event):void { const value=(event.target as HTMLSelectElement).value as CakeOrder['setup']; this.form.controls.setup.setValue(value); if(value==='Delivery') this.deliveryModal.set(true); else { this.form.patchValue({deliveryAmount:0,deliveredBy:''}); this.deliveryModal.set(false); } }
   confirmDelivery():void { if(!this.form.controls.deliveredBy.value.trim()){ this.notify('Please enter who will deliver the order.',true); return; } this.deliveryModal.set(false); }
-  async markPaid(order:CakeOrder):Promise<void> { try { await this.data.markOrderFullyPaid(order.id); this.notify('Payment completed. Due is ₹0 and order is now closed.'); } catch { this.notify('Unable to update payment.', true); } }
-  setFilter(e: Event):void { this.filter.set((e.target as HTMLSelectElement).value as 'all'|OrderStatus); }
+  async markPaid(order:CakeOrder):Promise<void> { try { await this.data.markOrderFullyPaid(order.id); this.notify(order.status==='Delivered'?'Payment completed and delivered order closed.':'Payment completed. The order stays open until delivery.'); } catch { this.notify('Unable to update payment.', true); } }
+  setFilter(e: Event):void { this.filter.set((e.target as HTMLSelectElement).value as OrderFilter); }
   setMonths(value: 1|3|6|12|'all'):void { this.months.set(value); this.selectedMonth.set(''); }
   setExactMonth(event:Event):void { this.selectedMonth.set((event.target as HTMLSelectElement).value); }
-  async setStatus(id:string,e:Event):Promise<void> { try { await this.data.updateOrderStatus(id,(e.target as HTMLSelectElement).value as OrderStatus); this.notify('Order status updated. Payment is still required before closing.'); } catch { this.notify('Unable to update order status.', true); } }
+  async setStatus(id:string,e:Event):Promise<void> { try { const status=await this.data.updateOrderStatus(id,(e.target as HTMLSelectElement).value as OrderStatus); this.notify(status==='Closed'?'Delivered and fully paid — order closed.':'Order status updated.'); } catch { this.notify('Unable to update order status.', true); } }
   total(o:{amount:number;deliveryAmount:number}):number { return o.amount+o.deliveryAmount; }
   balance(o:{amount:number;deliveryAmount:number;advancePaid:number}):number { return Math.max(0,this.total(o)-o.advancePaid); }
   isPieceProduct(cakeType=this.form.controls.cakeType.value):boolean { return cakeType === 'Cupcake' || cakeType === 'Brownie'; }
