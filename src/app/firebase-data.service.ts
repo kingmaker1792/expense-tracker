@@ -33,6 +33,10 @@ export interface ClientHistory {
   lifetimeValue: number; lastOrderDate: string; orders: CakeOrder[];
 }
 
+export interface MessageTemplate {
+  id: string; title: string; category: string; message: string;
+}
+
 const DEFAULT_FREQUENT_EXPENSES: Record<ExpenseType, string[]> = {
   cake: ['Cake boxes', 'Chocolate compound', 'Flour & sugar', 'Fresh cream', 'Fresh fruit'],
   home: ['Electricity bill', 'Gas cylinder', 'Groceries', 'Internet bill', 'Milk'],
@@ -43,6 +47,7 @@ export class FirebaseDataService {
   readonly expenses = signal<Expense[]>([]);
   readonly orders = signal<CakeOrder[]>([]);
   readonly frequentExpenses = signal<Record<ExpenseType, string[]>>(DEFAULT_FREQUENT_EXPENSES);
+  readonly messageTemplates = signal<MessageTemplate[]>([]);
   readonly loading = signal(true);
   readonly backendError = signal('');
   readonly user = signal<User | null>(null);
@@ -117,6 +122,9 @@ export class FirebaseDataService {
     await this.runOperation('Updating frequent expenses…', async () => { const db = await this.getDb(); await setDoc(doc(db, 'settings', 'frequent-expenses'), next); });
   }
 
+  async addMessageTemplate(template: Omit<MessageTemplate, 'id'>): Promise<void> { await this.runOperation('Saving message template…', async () => { const db=await this.getDb(); await addDoc(collection(db,'messageTemplates'),template); }); }
+  async deleteMessageTemplate(id:string): Promise<void> { await this.runOperation('Deleting message template…', async () => { const db=await this.getDb(); await deleteDoc(doc(db,'messageTemplates',id)); }); }
+
   async addOrder(order: Omit<CakeOrder, 'id'>): Promise<void> { await this.runOperation('Saving order…', async () => { const db = await this.getDb(); await addDoc(collection(db, 'orders'), order); }); }
   async updateOrder(order: CakeOrder): Promise<void> { await this.runOperation('Updating order…', async () => { const db = await this.getDb(); const { id, ...data } = order; await setDoc(doc(db, 'orders', id), data); }); }
   async deleteOrder(id: string): Promise<void> { await this.runOperation('Deleting order…', async () => { const db = await this.getDb(); await deleteDoc(doc(db, 'orders', id)); }); }
@@ -156,6 +164,9 @@ export class FirebaseDataService {
       this.unsubscribeListeners.push(onSnapshot(doc(db, 'settings', 'frequent-expenses'), snapshot => {
         if (snapshot.exists()) this.frequentExpenses.set(snapshot.data() as Record<ExpenseType, string[]>);
       }, error => this.reportError(error)));
+      this.unsubscribeListeners.push(onSnapshot(collection(db,'messageTemplates'), snapshot => {
+        this.messageTemplates.set(snapshot.docs.map(item=>({id:item.id,...item.data()}) as MessageTemplate));
+      }, error=>this.reportError(error)));
     } catch (error) { this.reportError(error); }
   }
 
