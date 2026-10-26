@@ -13,7 +13,7 @@ button { border: 0; background: none; color: inherit; }
 .sidebar nav a.active { background: #eaf2ff; color: #1d4ed8; }
 .side-note { margin-top: auto; border-radius: 14px; padding: 15px; background: #f1f6f3; font-size: 11px; color: #61706c; line-height: 1.55; }
 .side-note span { font-size: 18px; }.side-note p { margin: 7px 0 0; }.side-note strong { color: #30443f; }
-.profile { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--line); }.profile > span, .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #1e3a8a; background: #dbeafe; font-weight: 700; font-size: 11px; }.profile i { margin-left: auto; }
+.profile { margin-top: auto; padding-top: 18px; border-top: 1px solid var(--line); }.profile > span, .avatar { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; color: #1e3a8a; background: #dbeafe; font-weight: 700; font-size: 11px; }.profile i { margin-left: auto; }
 main { margin-left: 244px; padding: 0 42px 56px; max-width: 1500px; }
 header { height: 104px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
 header h1 { font: 700 23px 'Segoe UI', sans-serif; margin: 3px 0 0; } .eyebrow { font-size: 9px; font-weight: 700; letter-spacing: 1.4px; color: #929996; margin: 0; }

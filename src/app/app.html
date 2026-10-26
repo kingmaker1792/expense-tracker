@@ -4,12 +4,11 @@
     <a class="brand" routerLink="/dashboard"><span class="brand-mark">M</span><div><strong>Mannam Expense</strong><small>Home & bakery finances</small></div></a>
     <nav aria-label="Main navigation">
       <a routerLink="/dashboard" routerLinkActive="active"><span>⌂</span> Dashboard</a>
+      <a routerLink="/clients" routerLinkActive="active"><span>◎</span> Clients</a>
       <a routerLink="/expenses" routerLinkActive="active"><span>₹</span> Expenses</a>
       <a routerLink="/orders" routerLinkActive="active"><span>♢</span> Cake orders <b>{{ data.pendingOrders() }}</b></a>
-      <a routerLink="/clients" routerLinkActive="active"><span>◎</span> Client history</a>
       <a routerLink="/messages" routerLinkActive="active"><span>✦</span> Festival messages</a>
     </nav>
-    <div class="side-note"><span>✨</span><p><strong>October insight</strong><br>Cake supplies are 12% lower than last month.</p></div>
     <button class="profile" (click)="signOut()" title="Sign out"><span>{{ (data.user()?.displayName || data.user()?.email || 'ME').slice(0,2).toUpperCase() }}</span><div><strong>{{ data.user()?.displayName || 'Family account' }}</strong><small>Sign out</small></div><i>↗</i></button>
   </aside>
   <main>
@@ -19,9 +18,9 @@
   </main>
   <nav class="bottom-nav" aria-label="Mobile navigation">
     <a routerLink="/dashboard" routerLinkActive="active"><span>⌂</span>Home</a>
+    <a routerLink="/clients" routerLinkActive="active"><span>◎</span>Clients</a>
     <a routerLink="/expenses" routerLinkActive="active"><span>₹</span>Expenses</a>
     <a routerLink="/orders" routerLinkActive="active"><span>♢</span>Orders</a>
-    <a routerLink="/clients" routerLinkActive="active"><span>◎</span>Clients</a>
     <a routerLink="/messages" routerLinkActive="active"><span>✦</span>Offers</a>
   </nav>
 </div>
