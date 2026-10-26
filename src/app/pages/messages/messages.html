@@ -1,9 +1,144 @@
-<header><div><p class="eyebrow">CUSTOMER ENGAGEMENT</p><h1>Festival messages</h1></div><button class="avatar">SS</button></header>
-<section class="page-lead"><div><h2>Wish clients and share offers</h2><p>Personalize ready messages or create and save your own.</p></div><button class="primary" (click)="sendNext()">Send next on WhatsApp</button></section>
-<section class="channel-guide"><span class="channel-icon">◉</span><div><strong>Best free option: WhatsApp Business app</strong><p>Open one personalized chat at a time without platform automation fees. Send only to clients who agreed to receive offers.</p></div><div class="channel-tags"><span>WhatsApp · Free manual</span><span>Email · Free, email needed</span><span>SMS · Usually paid</span></div></section>
-<section class="message-workspace">
-  <aside class="panel template-library"><div class="panel-head"><div><h3>Ready messages</h3><p>Choose a starting point</p></div><span class="soft-label">{{ readyTemplates.length }} ready</span></div><div class="template-list">@for(template of readyTemplates;track template.id){<button type="button" (click)="selectTemplate(template)"><span>{{ template.category==='Offer'?'%':'✦' }}</span><div><strong>{{ template.title }}</strong><small>{{ template.message }}</small></div></button>}</div>@if(data.messageTemplates().length){<div class="saved-heading"><strong>Saved by you</strong><small>Shared with the family account</small></div><div class="template-list custom">@for(template of data.messageTemplates();track template.id){<div><button type="button" (click)="selectTemplate(template)"><span>✎</span><div><strong>{{ template.title }}</strong><small>{{ template.message }}</small></div></button><button type="button" class="template-delete" (click)="deleteTemplate(template.id)" aria-label="Delete message template">×</button></div>}</div>}</aside>
-  <article class="panel message-composer"><div class="panel-head"><div><h3>Message editor</h3><p>WhatsApp-friendly formatting and personalization</p></div><span class="soft-label">Use &#123;name&#125;</span></div><div class="message-meta"><div class="field"><label>Template name</label><input [value]="title()" (input)="updateTitle($event)" placeholder="Diwali offer"></div><div class="field"><label>Category</label><select [value]="category()" (change)="updateCategory($event)"><option>Festival</option><option>Offer</option><option>Thank you</option><option>Announcement</option><option>Custom</option></select></div></div><div class="editor-shell"><div class="editor-toolbar"><button type="button" (click)="insert('*bold*')"><b>B</b></button><button type="button" (click)="insert('_italic_')"><i>I</i></button><button type="button" (click)="insert('{name}')">＋ Name</button><button type="button" (click)="insert('🎉')">🎉</button><button type="button" (click)="insert('🪔')">🪔</button><button type="button" (click)="insert('🎂')">🎂</button></div><textarea [value]="message()" (input)="updateMessage($event)" maxlength="2000" placeholder="Write your message..."></textarea><small>{{ message().length }} / 2000 characters</small></div><div class="message-preview"><span>PREVIEW</span><p>{{ preview() }}</p></div><div class="composer-actions"><button class="secondary" (click)="copyMessage()">Copy preview</button><button class="secondary" (click)="saveTemplate()">Save as template</button><button class="primary" (click)="sendNext()">Send next on WhatsApp</button></div></article>
+<header>
+  <div>
+    <p class="eyebrow">CUSTOMER ENGAGEMENT</p>
+    <h1>Festival messages</h1>
+  </div>
+  <button class="avatar">SS</button>
+</header>
+
+<section class="page-lead message-page-lead">
+  <div>
+    <h2>Wish clients and share offers</h2>
+    <p>Select your clients first, personalize the message, then review it before opening WhatsApp.</p>
+  </div>
+  <div class="message-steps" aria-label="Message steps">
+    <span class="active"><b>1</b> Select clients</span>
+    <span [class.active]="selectedClients().length"><b>2</b> Create message</span>
+    <span [class.active]="sentKeys().length"><b>3</b> Send</span>
+  </div>
 </section>
-<section class="panel audience-panel"><div class="panel-head"><div><h3>Select clients</h3><p>{{ selectedClients().length }} selected · messages open individually for review</p></div><button class="text-button" (click)="selectVisible()">Select / clear visible</button></div><div class="audience-search"><span>⌕</span><input type="search" placeholder="Search client name or phone" [value]="clientSearch()" (input)="updateClientSearch($event)"></div><div class="audience-list">@for(client of filteredClients();track client.key){<label [class.selected]="selectedKeys().includes(client.key)"><input type="checkbox" [checked]="selectedKeys().includes(client.key)" (change)="toggleClient(client.key)"><span class="client-avatar">{{ client.name.slice(0,2).toUpperCase() }}</span><span><strong>{{ client.name }}</strong><small>☎ {{ client.phone }} · {{ client.orderCount }} lifetime order{{ client.orderCount===1?'':'s' }}</small></span><button type="button" [class.sent]="sentKeys().includes(client.key)" (click)="$event.preventDefault();sendWhatsApp(client)">{{ sentKeys().includes(client.key)?'Opened ✓':'WhatsApp ↗' }}</button></label>} @empty {<p class="empty-state">No matching clients.</p>}</div></section>
+
+<section class="panel audience-panel audience-first">
+  <div class="panel-head audience-heading">
+    <div>
+      <span class="step-label">STEP 1</span>
+      <h3>Select clients</h3>
+      <p>Search by name or phone number. You can select more than one client.</p>
+    </div>
+    @if(filteredClients().length){
+      <button class="text-button" (click)="selectVisible()">Select / clear visible</button>
+    }
+  </div>
+  <div class="audience-toolbar">
+    <div class="audience-search">
+      <span>⌕</span>
+      <input type="search" placeholder="Search client name or phone" [value]="clientSearch()" (input)="updateClientSearch($event)">
+    </div>
+    @if(selectedClients().length){
+      <div class="selection-count"><strong>{{ selectedClients().length }}</strong> client{{ selectedClients().length===1?'':'s' }} selected</div>
+    }
+  </div>
+  <div class="audience-list">
+    @for(client of filteredClients();track client.key){
+      <label [class.selected]="selectedKeys().includes(client.key)">
+        <input type="checkbox" [checked]="selectedKeys().includes(client.key)" (change)="toggleClient(client.key)">
+        <span class="client-avatar">{{ client.name.slice(0,2).toUpperCase() }}</span>
+        <span class="client-details">
+          <strong>{{ client.name }}</strong>
+          <small>☎ {{ client.phone }} · {{ client.orderCount }} lifetime order{{ client.orderCount===1?'':'s' }}</small>
+        </span>
+        <span class="client-check">{{ selectedKeys().includes(client.key)?'✓':'Select' }}</span>
+      </label>
+    } @empty {
+      <p class="empty-state">No matching clients.</p>
+    }
+  </div>
+</section>
+
+@if(selectedClients().length){
+  <section class="composer-stage">
+    <div class="composer-stage-head">
+      <div>
+        <span class="step-label">STEP 2</span>
+        <h2>Create your message</h2>
+        <p>The preview is personalized for {{ selectedClients()[0].name }}.</p>
+      </div>
+      <div class="selected-client-preview">
+        @for(client of selectedClients().slice(0,3);track client.key){
+          <span title="{{ client.name }}">{{ client.name.slice(0,2).toUpperCase() }}</span>
+        }
+        @if(selectedClients().length>3){<b>+{{ selectedClients().length-3 }}</b>}
+      </div>
+    </div>
+
+    <div class="message-workspace">
+      <aside class="panel template-library">
+        <div class="panel-head">
+          <div><h3>Ready messages</h3><p>Choose a starting point</p></div>
+          <span class="soft-label">{{ readyTemplates.length }} ready</span>
+        </div>
+        <div class="template-list">
+          @for(template of readyTemplates;track template.id){
+            <button type="button" (click)="selectTemplate(template)">
+              <span>{{ template.category==='Offer'?'%':'✦' }}</span>
+              <div><strong>{{ template.title }}</strong><small>{{ template.message }}</small></div>
+            </button>
+          }
+        </div>
+        @if(data.messageTemplates().length){
+          <div class="saved-heading"><strong>Saved by you</strong><small>Shared with the family account</small></div>
+          <div class="template-list custom">
+            @for(template of data.messageTemplates();track template.id){
+              <div>
+                <button type="button" (click)="selectTemplate(template)"><span>✎</span><div><strong>{{ template.title }}</strong><small>{{ template.message }}</small></div></button>
+                <button type="button" class="template-delete" (click)="deleteTemplate(template.id)" aria-label="Delete message template">×</button>
+              </div>
+            }
+          </div>
+        }
+      </aside>
+
+      <article class="panel message-composer">
+        <div class="panel-head">
+          <div><h3>Message editor</h3><p>WhatsApp-friendly formatting and personalization</p></div>
+          <span class="soft-label">Use &#123;name&#125;</span>
+        </div>
+        <div class="message-meta">
+          <div class="field"><label>Template name</label><input [value]="title()" (input)="updateTitle($event)" placeholder="Diwali offer"></div>
+          <div class="field"><label>Category</label><select [value]="category()" (change)="updateCategory($event)"><option>Festival</option><option>Offer</option><option>Thank you</option><option>Announcement</option><option>Custom</option></select></div>
+        </div>
+        <div class="editor-shell">
+          <div class="editor-toolbar">
+            <button type="button" (click)="insert('*bold*')"><b>B</b></button>
+            <button type="button" (click)="insert('_italic_')"><i>I</i></button>
+            <button type="button" (click)="insert('{name}')">＋ Name</button>
+            <button type="button" (click)="insert('🎉')">🎉</button>
+            <button type="button" (click)="insert('🪔')">🪔</button>
+            <button type="button" (click)="insert('🎂')">🎂</button>
+          </div>
+          <textarea [value]="message()" (input)="updateMessage($event)" maxlength="2000" placeholder="Write your message..."></textarea>
+          <small>{{ message().length }} / 2000 characters</small>
+        </div>
+        <div class="message-preview"><span>PREVIEW FOR {{ selectedClients()[0].name.toUpperCase() }}</span><p>{{ preview() }}</p></div>
+        <div class="composer-actions">
+          <button class="secondary" (click)="copyMessage()">Copy preview</button>
+          <button class="secondary" (click)="saveTemplate()">Save template</button>
+          <button class="primary send-message-action" (click)="sendNext()">Send next on WhatsApp</button>
+        </div>
+      </article>
+    </div>
+  </section>
+} @else {
+  <section class="message-empty-state">
+    <span>✦</span>
+    <div><strong>Select a client to create a message</strong><p>The editor and WhatsApp send button will appear after your selection.</p></div>
+  </section>
+}
+
+<section class="channel-guide">
+  <span class="channel-icon">◉</span>
+  <div><strong>Best free option: WhatsApp Business app</strong><p>Open one personalized chat at a time without platform automation fees. Send only to clients who agreed to receive offers.</p></div>
+  <div class="channel-tags"><span>WhatsApp · Free manual</span><span>Email · Free, email needed</span><span>SMS · Usually paid</span></div>
+</section>
+
 @if(toast()){<div class="toast" [class.error]="toast().startsWith('error')"><span>{{ toast().startsWith('error')?'!':'✓' }}</span>{{ toast().split(':')[1] }}</div>}
