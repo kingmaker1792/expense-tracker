@@ -7,7 +7,7 @@
       <a routerLink="/clients" routerLinkActive="active"><span>◎</span> Clients</a>
       <a routerLink="/expenses" routerLinkActive="active"><span>₹</span> Expenses</a>
       <a routerLink="/orders" routerLinkActive="active"><span>♢</span> Cake orders <b>{{ data.pendingOrders() }}</b></a>
-      <a routerLink="/messages" routerLinkActive="active"><span>✦</span> Festival messages</a>
+      <a routerLink="/festival-messages" routerLinkActive="active"><span>✦</span> Festival messages</a>
     </nav>
     <button class="profile" (click)="signOut()" title="Sign out"><span>{{ (data.user()?.displayName || data.user()?.email || 'ME').slice(0,2).toUpperCase() }}</span><div><strong>{{ data.user()?.displayName || 'Family account' }}</strong><small>Sign out</small></div><i>↗</i></button>
   </aside>
@@ -21,7 +21,7 @@
     <a routerLink="/clients" routerLinkActive="active"><span>◎</span>Clients</a>
     <a routerLink="/expenses" routerLinkActive="active"><span>₹</span>Expenses</a>
     <a routerLink="/orders" routerLinkActive="active"><span>♢</span>Orders</a>
-    <a routerLink="/messages" routerLinkActive="active"><span>✦</span>Offers</a>
+    <a routerLink="/festival-messages" routerLinkActive="active"><span>✦</span>Offers</a>
   </nav>
 </div>
 } @else {

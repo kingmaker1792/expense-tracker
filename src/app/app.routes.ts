@@ -7,7 +7,8 @@ export const routes: Routes = [
   { path: 'expenses', canActivate: [authGuard], loadComponent: () => import('./pages/expenses/expenses').then((m) => m.Expenses) },
   { path: 'orders', canActivate: [authGuard], loadComponent: () => import('./pages/orders/orders').then((m) => m.Orders) },
   { path: 'clients', canActivate: [authGuard], loadComponent: () => import('./pages/clients/clients').then((m) => m.Clients) },
-  { path: 'messages', canActivate: [authGuard], loadComponent: () => import('./pages/messages/messages').then((m) => m.Messages) },
+  { path: 'festival-messages', canActivate: [authGuard], loadComponent: () => import('./pages/messages/messages').then((m) => m.Messages) },
+  { path: 'messages', pathMatch: 'full', redirectTo: 'festival-messages' },
   { path: '', pathMatch: 'full', redirectTo: 'dashboard' },
   { path: '**', redirectTo: 'dashboard' },
 ];
