@@ -7,6 +7,9 @@ export class Dashboard {
   readonly data = inject(FirebaseDataService);
   readonly todayLabel = new Intl.DateTimeFormat('en-IN', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date()).toUpperCase();
   readonly currentMonthLabel = new Intl.DateTimeFormat('en-IN', { month: 'long', year: 'numeric' }).format(new Date());
+  readonly greeting = this.timeGreeting();
+  readonly loginName = computed(() => this.data.user()?.displayName?.trim() || this.data.user()?.email?.split('@')[0] || 'Family');
+  readonly loginInitials = computed(() => this.initials(this.loginName()));
   readonly selectedContributionMonth = signal('');
 
   readonly revenueSeries = computed(() => {
@@ -88,4 +91,5 @@ export class Dashboard {
   private monthOrders(date: Date): CakeOrder[] { return this.data.orders().filter(order => { const d = new Date(`${order.dueDate}T00:00:00`); return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth(); }); }
   private monthKey(date:Date): string { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; }
   private localDate(date: Date): string { const year=date.getFullYear(); const month=String(date.getMonth()+1).padStart(2,'0'); const day=String(date.getDate()).padStart(2,'0'); return `${year}-${month}-${day}`; }
+  private timeGreeting(): string { const hour=new Date().getHours(); return hour<12?'morning':hour<17?'afternoon':'evening'; }
 }

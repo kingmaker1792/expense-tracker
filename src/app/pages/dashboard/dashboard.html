@@ -1,4 +1,4 @@
-<header><div><p class="eyebrow">{{ todayLabel }}</p><h1>Good morning, Sonam</h1></div><button class="avatar">SS</button></header>
+<header><div><p class="eyebrow">{{ todayLabel }}</p><h1>Good {{ greeting }}, {{ loginName() }}</h1></div><button class="avatar" [attr.aria-label]="loginName()">{{ loginInitials() }}</button></header>
 <section class="intro-row"><div><h2>Here’s your money at a glance.</h2><p>Track the home, grow the bakery, stay in control.</p></div><a class="primary" routerLink="/expenses">＋ Add expense</a></section>
 <section class="stat-grid">
   <article class="stat-card total"><span class="stat-icon">₹</span><p>Total spent</p><h3>{{ currency(data.totalSpent()) }}</h3><small>{{ currentMonthLabel }}</small></article>
