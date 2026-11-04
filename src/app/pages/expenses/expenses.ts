@@ -12,7 +12,7 @@ export class Expenses {
     const q = this.search().toLowerCase(); const period=this.months(); const exactMonth=this.selectedMonth(); const now=new Date();
     const start=new Date(now.getFullYear(),now.getMonth()-(period==='all'?12:period)+1,1);
     const end=new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59);
-    return this.data.expenses().filter(i => i.type === this.expenseType())
+    return this.data.allExpenses().filter(i => i.type === this.expenseType())
       .filter(i => { if(exactMonth) return i.date.startsWith(exactMonth); const date=new Date(`${i.date}T00:00:00`); return date>=start && date<=end; })
       .filter(i => this.personFilter() === 'all' || i.paidBy === this.personFilter())
       .filter(i => this.modeFilter() === 'all' || i.paymentMode === this.modeFilter())
@@ -20,29 +20,31 @@ export class Expenses {
   });
   readonly total = computed(() => this.filtered().reduce((sum, i) => sum + i.amount, 0));
   readonly monthOptions = computed(() => {
-    const now=new Date(); const start=this.monthKey(new Date(now.getFullYear(),now.getMonth()-11,1)); const end=this.monthKey(now);
-    return [...new Set(this.data.expenses().filter(item=>item.type===this.expenseType()).map(item=>item.date.slice(0,7)).filter(key=>/^\d{4}-\d{2}$/.test(key)&&key>=start&&key<=end))]
+    const withData=this.data.allExpenses().filter(item=>item.type===this.expenseType()).map(item=>item.date.slice(0,7)).filter(key=>/^\d{4}-\d{2}$/.test(key));
+    return [...new Set(withData)]
       .sort((a,b)=>b.localeCompare(a)).map(value=>({value,label:new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(new Date(`${value}-01T00:00:00`))}));
   });
   readonly rangeLabel = computed(() => { const exact=this.selectedMonth(); if(exact) return new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(new Date(`${exact}-01T00:00:00`)); const period=this.months(); if(period==='all') return 'Last 12 months'; const now=new Date(); const start=new Date(now.getFullYear(),now.getMonth()-period+1,1); const fmt=new Intl.DateTimeFormat('en-IN',{month:'short',year:'numeric'}); return period===1 ? fmt.format(now) : `${fmt.format(start)} – ${fmt.format(now)}`; });
   setType(type: ExpenseType) { this.expenseType.set(type); this.reset(); }
   async save() { const v = this.form.getRawValue(); const name = v.customName.trim() || v.preset; if (this.form.invalid || !name) { this.form.markAllAsTouched(); this.notify('Please complete all required fields.', true); return; } try { const id=this.editingId(); const item={ id:id??'', name, amount:Number(v.amount), date:v.date, paymentMode:v.paymentMode, paidBy:v.paidBy, type:this.expenseType() }; if(id) await this.data.updateExpense(item); else { const {id:_,...newItem}=item; await this.data.addExpense(newItem); } this.notify(id?'Expense updated successfully.':'Expense added successfully.'); this.closeForm(); } catch { this.notify('Unable to save expense. Check Firebase access.', true); } }
-  edit(item: Expense) { this.editingId.set(item.id); this.form.reset({preset:'',customName:item.name,amount:item.amount,date:item.date,paymentMode:item.paymentMode,paidBy:item.paidBy}); this.showForm.set(true); window.scrollTo({top:80,behavior:'smooth'}); }
+  edit(item: Expense) { if(item.tripId){window.location.href='/trips';return;} this.editingId.set(item.id); this.form.reset({preset:'',customName:item.name,amount:item.amount,date:item.date,paymentMode:item.paymentMode,paidBy:item.paidBy}); this.showForm.set(true); window.scrollTo({top:80,behavior:'smooth'}); }
   closeForm() { this.editingId.set(null); this.showForm.set(false); this.form.reset({ preset:'',customName:'',amount:null,date:this.today(),paymentMode:'GPay',paidBy:'Sonam' }); }
   requestRemove(item: Expense) { this.deleteTarget.set({kind:'expense',item}); }
   updateFrequentName(e: Event) { this.frequentName.set((e.target as HTMLInputElement).value); }
   async addFrequent() { try { if (await this.data.addFrequentExpense(this.expenseType(), this.frequentName())) { this.notify('Frequent expense added.'); this.frequentName.set(''); } else this.notify('Enter a unique expense name.', true); } catch { this.notify('Unable to save frequent expense.', true); } }
   requestRemoveFrequent(name: string) { this.deleteTarget.set({kind:'frequent',name}); }
-  async confirmRemove() { const target=this.deleteTarget(); if(!target) return; this.deleteTarget.set(null); try { if(target.kind==='expense'){ await this.data.deleteExpense(target.item.id); this.notify(`${target.item.name} removed.`); } else { await this.data.deleteFrequentExpense(this.expenseType(), target.name); this.notify(`${target.name} removed from frequent expenses.`); } } catch { this.notify('Unable to delete this item.', true); } }
+  async confirmRemove() { const target=this.deleteTarget(); if(!target) return; this.deleteTarget.set(null); try { if(target.kind==='expense'){ if(target.item.tripId)await this.data.deleteTripExpense(target.item.id);else await this.data.deleteExpense(target.item.id); this.notify(`${target.item.name} removed.`); } else { await this.data.deleteFrequentExpense(this.expenseType(), target.name); this.notify(`${target.name} removed from frequent expenses.`); } } catch { this.notify('Unable to delete this item.', true); } }
   closeFrequentManager() { this.showFrequentManager.set(false); this.frequentName.set(''); }
   reset() { this.search.set(''); this.personFilter.set('all'); this.modeFilter.set('all'); this.months.set(1); this.selectedMonth.set(''); }
   setMonths(value:1|3|6|12|'all') { this.months.set(value); this.selectedMonth.set(''); }
   setExactMonth(event:Event) { this.selectedMonth.set((event.target as HTMLSelectElement).value); }
+  exportExpenses() { const rows=this.filtered().map(item=>[item.date,item.name,item.amount,item.paymentMode,item.paidBy,item.type]); this.downloadCsv(`mannam-${this.expenseType()}-expenses-${this.today()}.csv`,[['Date','Expense','Amount','Payment mode','Paid by','Type'],...rows]); }
   input(e: Event) { this.search.set((e.target as HTMLInputElement).value); } person(e: Event) { this.personFilter.set((e.target as HTMLSelectElement).value); } mode(e: Event) { this.modeFilter.set((e.target as HTMLSelectElement).value); }
   currency(v: number) { return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(v); }
   formatDate(v: string) { return new Intl.DateTimeFormat('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }).format(new Date(`${v}T00:00:00`)); }
   initials(v: string) { return v.split(' ').map(p => p[0]).join('').slice(0,2).toUpperCase(); }
+  tripLabel(item:Expense):string { const trip=this.data.trips().find(value=>value.id===item.tripId);return trip?`Trip expense · ${trip.destination||trip.name}`:'Trip expense'; }
   private today() { return new Date().toISOString().slice(0,10); }
-  private monthKey(date:Date) { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; }
+  private downloadCsv(filename:string,rows:(string|number)[][]) { const csv=rows.map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(',')).join('\r\n'); const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'})); const link=document.createElement('a'); link.href=url; link.download=filename; link.click(); URL.revokeObjectURL(url); }
   private notify(m: string, error=false) { this.toast.set(`${error?'error':'success'}:${m}`); setTimeout(() => this.toast.set(''), 2600); }
 }

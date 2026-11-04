@@ -1,0 +1,479 @@
+{
+  "slides": [
+    {
+      "eyebrow": "THE PERFECT CAKE BAKERY · EST. 2018",
+      "title": "Every cake, eggless.",
+      "detail": "Made for every celebration.",
+      "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1400&q=90",
+      "link": "#menu",
+      "action": "Explore cakes"
+    },
+    {
+      "eyebrow": "NEW IN THE KITCHEN",
+      "title": "Meet the newest slice.",
+      "detail": "Discover our latest cake creations.",
+      "image": "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=1400&q=90",
+      "link": "#menu",
+      "action": "See collection"
+    },
+    {
+      "eyebrow": "OFFERS & ANNOUNCEMENTS",
+      "title": "A little extra sweetness.",
+      "detail": "Watch this space for bakery offers.",
+      "image": "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=1400&q=90",
+      "link": "#offers",
+      "action": "View offer"
+    }
+  ],
+  "customGallery": [
+    {
+      "title": "Berry celebration",
+      "occasion": "Celebration",
+      "image": "https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=900&q=85",
+      "images": [
+        "https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=1200&q=85",
+        "https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=900&h=900&q=85"
+      ],
+      "description": "A berry finished design made around your colours, occasion and serving size.",
+      "reviews": [
+        {
+          "name": "Ananya",
+          "text": "The berry details made the celebration feel so special."
+        }
+      ]
+    },
+    {
+      "title": "Chocolate statement",
+      "occasion": "Birthday",
+      "image": "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=900&q=85",
+      "description": "A rich chocolate centrepiece tailored to your design brief."
+    },
+    {
+      "title": "Wedding bloom",
+      "occasion": "Wedding",
+      "image": "https://images.unsplash.com/photo-1623428454614-abaf00244e52?auto=format&fit=crop&w=900&q=85",
+      "description": "Elegant tiers and finishing details planned for your wedding."
+    },
+    {
+      "title": "Berry birthday",
+      "occasion": "Birthday",
+      "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=85",
+      "description": "A bright berry inspired birthday cake made to order."
+    },
+    {
+      "title": "Colourful party",
+      "occasion": "Kids",
+      "image": "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=900&q=85",
+      "description": "Playful colours and decorations for a personal celebration."
+    },
+    {
+      "title": "Minimal elegance",
+      "occasion": "Anniversary",
+      "image": "https://images.unsplash.com/photo-1571115177098-24ec42ed204d?auto=format&fit=crop&w=900&q=85",
+      "description": "A clean, understated cake finished to your brief."
+    },
+    {
+      "title": "Golden anniversary",
+      "occasion": "Anniversary",
+      "image": "https://images.unsplash.com/photo-1586788680434-30d324b2d46f?auto=format&fit=crop&w=900&q=85",
+      "description": "A warm, elegant design to celebrate years together."
+    },
+    {
+      "title": "Pastel birthday",
+      "occasion": "Birthday",
+      "image": "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=900&q=85",
+      "description": "Pastel colours and personal details for a birthday table."
+    },
+    {
+      "title": "Little star",
+      "occasion": "Kids",
+      "image": "https://images.unsplash.com/photo-1559620192-032c4bc4674e?auto=format&fit=crop&w=900&q=85",
+      "description": "A playful cake planned around your child’s favourite theme."
+    },
+    {
+      "title": "Grand reception",
+      "occasion": "Wedding",
+      "image": "https://images.unsplash.com/photo-1574085733277-851d9d856a3a?auto=format&fit=crop&w=900&q=85",
+      "description": "A statement cake sized and styled for your guest list."
+    },
+    {
+      "title": "Garden romance",
+      "occasion": "Wedding",
+      "image": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=900&q=85",
+      "description": "Soft botanical details for an intimate wedding."
+    },
+    {
+      "title": "Sweet surprise",
+      "occasion": "Celebration",
+      "image": "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=900&q=85",
+      "description": "A personalised surprise cake shaped around your idea."
+    }
+  ],
+  "cakes": [
+    {
+      "name": "Rosette Berry Bliss",
+      "description": "Vanilla sponge, berry compote and cloud-soft cream.",
+      "price": 1250,
+      "discountPercent": 15,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Anniversary"
+      ],
+      "flavor": "Fruit",
+      "type": "Cream Cake",
+      "image": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=900&q=85",
+      "images": [
+        "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=1100&q=85",
+        "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=1100&q=85",
+        "https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=1100&q=85"
+      ],
+      "rating": 4.9,
+      "reviews": [
+        {
+          "name": "Ananya",
+          "date": "Sample review",
+          "text": "Beautiful finish and a lovely berry flavour."
+        },
+        {
+          "name": "Riya",
+          "date": "Sample review",
+          "text": "Soft, fresh and perfect for our celebration."
+        }
+      ],
+      "badge": "Bestseller"
+    },
+    {
+      "name": "Midnight Truffle",
+      "description": "Dark chocolate layers with a glossy ganache finish.",
+      "price": 1450,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Everyday"
+      ],
+      "flavor": "Chocolate",
+      "type": "Truffle",
+      "image": "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=900&q=85",
+      "images": [
+        "https://images.unsplash.com/photo-1588195538326-c5b1e9f80a1b?auto=format&fit=crop&w=1100&q=85",
+        "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=1100&q=85",
+        "https://images.unsplash.com/photo-1574085733277-851d9d856a3a?auto=format&fit=crop&w=1100&q=85"
+      ],
+      "rating": 4.8,
+      "reviews": [
+        {
+          "name": "Meera",
+          "date": "Sample review",
+          "text": "Deep chocolate flavour and smooth ganache."
+        }
+      ],
+      "badge": "Rich & fudgy"
+    },
+    {
+      "name": "Strawberry Garden",
+      "description": "Fresh strawberries, chantilly cream and vanilla bean.",
+      "price": 1350,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Anniversary"
+      ],
+      "flavor": "Fruit",
+      "type": "Cream Cake",
+      "image": "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=900&q=85",
+      "badge": "Seasonal"
+    },
+    {
+      "name": "Confetti Celebration",
+      "description": "Funfetti sponge, vanilla buttercream and joyful sprinkles.",
+      "price": 1650,
+      "size": "1.5 kg · serves 12–14",
+      "weight": "1.5 kg",
+      "minQuantity": 2,
+      "occasion": [
+        "Kids",
+        "Birthday"
+      ],
+      "flavor": "Vanilla",
+      "type": "Designer",
+      "image": "https://images.unsplash.com/photo-1535141192574-5d4897c12636?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Classic Red Velvet",
+      "description": "Velvety cocoa sponge with smooth cream cheese frosting.",
+      "price": 1300,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Anniversary",
+        "Everyday"
+      ],
+      "flavor": "Red Velvet",
+      "type": "Cream Cake",
+      "image": "https://images.unsplash.com/photo-1586788680434-30d324b2d46f?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Chocolate Berry Crown",
+      "description": "Cocoa sponge, dark ganache and a crown of summer berries.",
+      "price": 1750,
+      "size": "1.5 kg · serves 12–14",
+      "weight": "1.5 kg",
+      "minQuantity": 2,
+      "occasion": [
+        "Birthday",
+        "Anniversary"
+      ],
+      "flavor": "Chocolate",
+      "type": "Truffle",
+      "image": "https://images.unsplash.com/photo-1606890737304-57a1ca8a5b62?auto=format&fit=crop&w=900&q=85",
+      "badge": "Celebration pick"
+    },
+    {
+      "name": "Lotus Biscoff Cloud",
+      "description": "Caramel biscuit cream, vanilla sponge and Biscoff crumb.",
+      "price": 1550,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Everyday"
+      ],
+      "flavor": "Vanilla",
+      "type": "Cheesecake",
+      "image": "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=900&q=85",
+      "badge": "New"
+    },
+    {
+      "name": "Tiramisu No. 5",
+      "description": "Espresso-soaked sponge, mascarpone cream and fine cocoa.",
+      "price": 1500,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Anniversary",
+        "Everyday"
+      ],
+      "flavor": "Coffee",
+      "type": "Cream Cake",
+      "image": "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Ivory Wedding Bloom",
+      "description": "Vanilla bean tiers with silk buttercream and sugar florals.",
+      "price": 4800,
+      "size": "2.5 kg · serves 24–28",
+      "weight": "2 kg+",
+      "minQuantity": 5,
+      "maxQuantity": 15,
+      "discountTiers": [
+        {
+          "minQuantity": 7,
+          "percent": 5
+        },
+        {
+          "minQuantity": 10,
+          "percent": 10
+        },
+        {
+          "minQuantity": 13,
+          "percent": 15
+        }
+      ],
+      "occasion": [
+        "Wedding"
+      ],
+      "flavor": "Vanilla",
+      "type": "Designer",
+      "image": "https://images.unsplash.com/photo-1623428454614-abaf00244e52?auto=format&fit=crop&w=900&q=85",
+      "badge": "Signature"
+    },
+    {
+      "name": "Mango Sunbeam",
+      "description": "Alphonso mango mousse, vanilla sponge and mango glaze.",
+      "price": 1400,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Everyday"
+      ],
+      "flavor": "Fruit",
+      "type": "Cream Cake",
+      "image": "https://images.unsplash.com/photo-1559620192-032c4bc4674e?auto=format&fit=crop&w=900&q=85",
+      "badge": "Seasonal"
+    },
+    {
+      "name": "Hazelnut Praline Crunch",
+      "description": "Chocolate sponge, hazelnut praline and crisp feuilletine.",
+      "price": 1700,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Anniversary"
+      ],
+      "flavor": "Chocolate",
+      "type": "Truffle",
+      "image": "https://images.unsplash.com/photo-1574085733277-851d9d856a3a?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Orange Almond Loaf",
+      "description": "A fragrant buttery loaf with orange zest and toasted almond.",
+      "price": 720,
+      "size": "750 g · serves 6–8",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Everyday"
+      ],
+      "flavor": "Fruit",
+      "type": "Tea Cake",
+      "image": "https://images.unsplash.com/photo-1519915028121-7d3463d20b13?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Pineapple Cream Dream",
+      "description": "Pineapple compote layered with vanilla sponge and whipped cream.",
+      "price": 1290,
+      "size": "1 kg · serves 8–10",
+      "weight": "1 kg",
+      "occasion": [
+        "Birthday",
+        "Everyday"
+      ],
+      "flavor": "Pineapple",
+      "type": "Cream Cake",
+      "image": "https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=900&q=85",
+      "collection": "New arrivals"
+    },
+    {
+      "name": "Chocolate Cloud Cupcakes",
+      "category": "Cupcakes",
+      "description": "Soft cocoa sponge topped with whipped chocolate frosting.",
+      "price": 540,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Birthday",
+        "Kids"
+      ],
+      "flavor": "Chocolate",
+      "type": "Cupcake",
+      "image": "https://images.unsplash.com/photo-1426869981800-95ebf51ce900?auto=format&fit=crop&w=900&q=85",
+      "badge": "Bestseller",
+      "collection": "Bestsellers"
+    },
+    {
+      "name": "Vanilla Sprinkle Cupcakes",
+      "category": "Cupcakes",
+      "description": "Vanilla cupcakes with colourful buttercream swirls.",
+      "price": 510,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Birthday",
+        "Kids"
+      ],
+      "flavor": "Vanilla",
+      "type": "Cupcake",
+      "image": "https://images.unsplash.com/photo-1519869325930-281384150729?auto=format&fit=crop&w=900&q=85",
+      "collection": "New arrivals"
+    },
+    {
+      "name": "Red Velvet Minis",
+      "category": "Cupcakes",
+      "description": "Little red velvet treats with cream cheese frosting.",
+      "price": 570,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Anniversary",
+        "Everyday"
+      ],
+      "flavor": "Red Velvet",
+      "type": "Cupcake",
+      "image": "https://images.unsplash.com/photo-1614707267537-b85aaf00c4b7?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Butterscotch Cupcakes",
+      "category": "Cupcakes",
+      "description": "Caramel crunch and silky butterscotch cream.",
+      "price": 560,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Birthday",
+        "Everyday"
+      ],
+      "flavor": "Butterscotch",
+      "type": "Cupcake",
+      "image": "https://images.unsplash.com/photo-1576618148400-f54bed99fcfd?auto=format&fit=crop&w=900&q=85",
+      "collection": "Seasonal"
+    },
+    {
+      "name": "Fudge Brownie Box",
+      "category": "Brownies",
+      "description": "Dense chocolate brownies with a crackly top.",
+      "price": 690,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Everyday",
+        "Birthday"
+      ],
+      "flavor": "Chocolate",
+      "type": "Brownie",
+      "image": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=85",
+      "badge": "Bestseller",
+      "collection": "Bestsellers"
+    },
+    {
+      "name": "Walnut Brownie Bites",
+      "category": "Brownies",
+      "description": "Chocolate brownie bites with toasted walnuts.",
+      "price": 640,
+      "size": "Box of 9",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Everyday"
+      ],
+      "flavor": "Chocolate",
+      "type": "Brownie",
+      "image": "https://images.unsplash.com/photo-1590841609987-4ac211afdde1?auto=format&fit=crop&w=900&q=85"
+    },
+    {
+      "name": "Coffee Swirl Brownies",
+      "category": "Brownies",
+      "description": "Fudgy brownies finished with an espresso swirl.",
+      "price": 720,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Everyday",
+        "Anniversary"
+      ],
+      "flavor": "Coffee",
+      "type": "Brownie",
+      "image": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=900&q=85",
+      "collection": "New arrivals"
+    },
+    {
+      "name": "Black Forest Brownies",
+      "category": "Brownies",
+      "description": "Cherry chocolate brownies inspired by a classic cake.",
+      "price": 750,
+      "size": "Box of 6",
+      "weight": "Under 1 kg",
+      "occasion": [
+        "Birthday",
+        "Everyday"
+      ],
+      "flavor": "Black Forest",
+      "type": "Brownie",
+      "image": "https://images.unsplash.com/photo-1590841609987-4ac211afdde1?auto=format&fit=crop&w=900&q=85",
+      "collection": "Signature"
+    }
+  ]
+}

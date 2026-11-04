@@ -28,10 +28,16 @@ export class Dashboard {
   readonly maxRevenue = computed(() => Math.max(...this.revenueSeries().map(item => item.total), 1));
   readonly revenueMonthsWithData = computed(() => this.revenueSeries().filter(item=>item.total>0));
   readonly currentMonthOrderValue = computed(() => this.revenueSeries().at(-1)?.total ?? 0);
+  readonly allExpenseValue = computed(() => this.data.allExpenses().reduce((sum,item)=>sum+item.amount,0));
+  readonly allCakeExpenseValue = computed(() => this.data.expenses().filter(item=>item.type==='cake').reduce((sum,item)=>sum+item.amount,0));
+  readonly allHomeExpenseValue = computed(() => this.data.allExpenses().filter(item=>item.type==='home').reduce((sum,item)=>sum+item.amount,0));
+  readonly allOrderValue = computed(() => this.data.orders().reduce((sum,order)=>sum+this.orderValue(order),0));
+  readonly currentActiveOrders = computed(() => { const now=new Date(); return this.data.orders().filter(order=>order.status!=='Closed'&&this.isSameMonth(order.dueDate,now)).length; });
+  readonly activeOrderValue = computed(() => this.data.orders().filter(order=>order.status!=='Closed').reduce((sum,order)=>sum+this.orderValue(order),0));
   readonly expenseSeries = computed(() => {
     const now=new Date();
     return Array.from({length:12},(_,index)=>new Date(now.getFullYear(),now.getMonth()-11+index,1)).map(date=>{
-      const expenses=this.data.expenses().filter(item=>{const d=new Date(`${item.date}T00:00:00`);return d.getFullYear()===date.getFullYear()&&d.getMonth()===date.getMonth();});
+      const expenses=this.data.allExpenses().filter(item=>{const d=new Date(`${item.date}T00:00:00`);return d.getFullYear()===date.getFullYear()&&d.getMonth()===date.getMonth();});
       const cake=expenses.filter(item=>item.type==='cake').reduce((sum,item)=>sum+item.amount,0);
       const home=expenses.filter(item=>item.type==='home').reduce((sum,item)=>sum+item.amount,0);
       return {month:new Intl.DateTimeFormat('en-IN',{month:'short',year:'2-digit'}).format(date),cake,home,total:cake+home};
@@ -39,15 +45,20 @@ export class Dashboard {
   });
   readonly maxExpense = computed(() => Math.max(...this.expenseSeries().flatMap(item=>[item.cake,item.home]),1));
   readonly expenseMonthsWithData = computed(() => this.expenseSeries().filter(item=>item.total>0));
+  readonly tripChartMonth=signal('all');
+  readonly tripChartMonths=computed(()=>[...new Set(this.data.tripExpenses().map(item=>item.date.slice(0,7)))].sort((a,b)=>b.localeCompare(a)));
+  readonly tripChart=computed(()=>this.data.trips().map(trip=>({trip,total:this.data.tripExpenses().filter(item=>item.tripId===trip.id&&(!this.tripChartMonth()||this.tripChartMonth()==='all'||item.date.startsWith(this.tripChartMonth()))).reduce((sum,item)=>sum+item.amount,0)})).filter(item=>item.total>0).sort((a,b)=>b.total-a.total));
+  readonly tripChartMax=computed(()=>Math.max(1,...this.tripChart().map(item=>item.total)));
+  readonly tripChartTotal=computed(()=>this.tripChart().reduce((sum,item)=>sum+item.total,0));
   readonly contributionMonthOptions = computed(() => {
     const now=new Date(); const start=this.monthKey(new Date(now.getFullYear(),now.getMonth()-11,1)); const end=this.monthKey(now);
-    return [...new Set(this.data.expenses().map(item=>item.date.slice(0,7)).filter(key=>/^\d{4}-\d{2}$/.test(key)&&key>=start&&key<=end))]
+    return [...new Set(this.data.allExpenses().map(item=>item.date.slice(0,7)).filter(key=>/^\d{4}-\d{2}$/.test(key)&&key>=start&&key<=end))]
       .sort((a,b)=>b.localeCompare(a)).map(value=>({value,label:new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(new Date(`${value}-01T00:00:00`))}));
   });
   readonly effectiveContributionMonth = computed(() => this.selectedContributionMonth() || this.contributionMonthOptions()[0]?.value || this.monthKey(new Date()));
   readonly familyContributions = computed(() => {
     const selected=this.effectiveContributionMonth();
-    return ['Manmohan','Sonam','Nadani','Gopal'].map(name=>({name,total:this.data.expenses().filter(item=>item.paidBy===name&&item.date.startsWith(selected)).reduce((sum,item)=>sum+item.amount,0)})).filter(person=>person.total>0);
+    return ['Manmohan','Sonam','Nadani','Gopal'].map(name=>({name,total:this.data.allExpenses().filter(item=>item.paidBy===name&&item.date.startsWith(selected)).reduce((sum,item)=>sum+item.amount,0)})).filter(person=>person.total>0);
   });
   readonly contributionTotal = computed(() => this.familyContributions().reduce((sum,person)=>sum+person.total,0));
   readonly profitSeries = computed(() => {
@@ -61,13 +72,24 @@ export class Dashboard {
     });
   });
   readonly currentProfit = computed(() => this.profitSeries().at(-1) ?? {profit:0,margin:0,cakeCost:0,extraCost:0,total:0,month:''});
+  readonly allTimeProfit = computed(() => { const revenue=this.allOrderValue(); const costs=this.allCakeExpenseValue()+this.data.orders().reduce((sum,order)=>sum+order.extraExpenses,0); const profit=revenue-costs; return {profit,margin:revenue?Math.round(profit/revenue*100):0}; });
+  readonly monthComparison = computed(() => {
+    const now=new Date(); const current=new Date(now.getFullYear(),now.getMonth(),1); const previous=new Date(now.getFullYear(),now.getMonth()-1,1);
+    const summarize=(date:Date)=>{ const orders=this.monthOrders(date); const revenue=orders.reduce((sum,order)=>sum+this.orderValue(order),0); const expenses=this.data.allExpenses().filter(item=>this.isSameMonth(item.date,date)).reduce((sum,item)=>sum+item.amount,0); const cakeCosts=this.data.expenses().filter(item=>item.type==='cake'&&this.isSameMonth(item.date,date)).reduce((sum,item)=>sum+item.amount,0); const profit=revenue-cakeCosts-orders.reduce((sum,order)=>sum+order.extraExpenses,0); return {orders:orders.length,revenue,expenses,profit}; };
+    const currentData=summarize(current); const previousData=summarize(previous);
+    return [
+      {label:'Orders',current:currentData.orders,previous:previousData.orders,currency:false},
+      {label:'Revenue',current:currentData.revenue,previous:previousData.revenue,currency:true},
+      {label:'Expenses',current:currentData.expenses,previous:previousData.expenses,currency:true},
+      {label:'Net profit',current:currentData.profit,previous:previousData.profit,currency:true},
+    ].map(item=>({...item,change:item.previous?Math.round((item.current-item.previous)/Math.abs(item.previous)*100):item.current?100:0}));
+  });
   readonly profitMonthsWithData = computed(() => this.profitSeries().filter(item=>item.profit!==0));
   readonly upcomingOrders = computed(() => {
     const today = this.localDate(new Date());
     return this.data.orders()
       .filter(order => order.status !== 'Closed' && order.dueDate >= today)
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
-      .slice(0, 5);
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   });
   readonly topClients = computed(() => {
     const map = new Map<string, { name:string; phone:string; total:number; orders:number; quantity:number }>();
@@ -85,10 +107,12 @@ export class Dashboard {
   initials(name: string): string { return name.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase(); }
   monthShort(value: string): string { return new Intl.DateTimeFormat('en-IN', { month: 'short' }).format(new Date(`${value}T00:00:00`)).toUpperCase(); }
   setContributionMonth(event:Event): void { this.selectedContributionMonth.set((event.target as HTMLSelectElement).value); }
+  setTripChartMonth(event:Event):void{this.tripChartMonth.set((event.target as HTMLSelectElement).value);}
   contributionShare(value:number): number { return this.contributionTotal() ? Math.round(value/this.contributionTotal()*100) : 0; }
   orderSize(order: Pick<CakeOrder, 'cakeType'|'cakeWeight'|'quantity'>): string { return order.cakeType === 'Cupcake' || order.cakeType === 'Brownie' ? `${order.quantity} piece${order.quantity===1?'':'s'}` : order.cakeWeight; }
   private orderValue(order: Pick<CakeOrder, 'amount'|'deliveryAmount'>): number { return order.amount + order.deliveryAmount; }
   private monthOrders(date: Date): CakeOrder[] { return this.data.orders().filter(order => { const d = new Date(`${order.dueDate}T00:00:00`); return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth(); }); }
+  private isSameMonth(value:string,date:Date):boolean { const item=new Date(`${value}T00:00:00`); return item.getFullYear()===date.getFullYear()&&item.getMonth()===date.getMonth(); }
   private monthKey(date:Date): string { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; }
   private localDate(date: Date): string { const year=date.getFullYear(); const month=String(date.getMonth()+1).padStart(2,'0'); const day=String(date.getDate()).padStart(2,'0'); return `${year}-${month}-${day}`; }
   private timeGreeting(): string { const hour=new Date().getHours(); return hour<12?'morning':hour<17?'afternoon':'evening'; }

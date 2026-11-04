@@ -7,7 +7,9 @@
     "build": "ng build",
     "deploy:firebase": "npm run build && firebase deploy --only hosting:mannam-expense --project cognylync --config firebase.json",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "deploy:firebase:hosting": "npm run build && firebase deploy --only hosting:mannam-expense --project cognylync --config firebase.json",
+    "deploy:firebase:rules": "firebase deploy --only firestore:rules --project cognylync --config firebase.rules.json"
   },
   "private": true,
   "packageManager": "npm@11.12.1",

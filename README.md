@@ -73,3 +73,7 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+### Shared Firestore deployment safety
+
+Expense Tracker and Urvan Master use the same Firestore database. Firestore rules are database-wide, so each app must keep the combined rules in `firestore.rules`. The normal Firebase config intentionally contains hosting only; `npm run deploy:firebase` deploys only the `mannam-expense` Hosting site. Do not run a project-wide `firebase deploy` from this project. Deploy shared Firestore rules only after reviewing the combined policy, using `npm run deploy:firebase:rules`.
