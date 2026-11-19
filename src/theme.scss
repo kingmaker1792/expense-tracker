@@ -255,6 +255,7 @@ select,.field>select,.name-fields select,.filter-row select,.orders-toolbar sele
 .reminder-preview-head h3{margin:3px 0 5px;color:#172554;font-size:19px}
 .reminder-preview-head p:not(.eyebrow){margin:0;color:#52647f;font-size:13px}
 .reminder-preview-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:15px}
+.reminder-preview-grid>div:only-child{grid-column:1/-1}
 .reminder-preview-grid>div{min-width:0;padding:16px;border:1px solid #dbe7f7;border-radius:14px;background:#fff;box-shadow:0 5px 18px #1e3a8a0a}
 .reminder-preview-grid strong,.reminder-preview-grid small{display:block}
 .reminder-preview-grid strong{color:#1d4ed8;font-size:15px}.reminder-preview-grid small{margin:4px 0 10px;color:#64748b;font-size:12px}
