@@ -29,7 +29,7 @@ export interface CakeOrder {
   location: 'Inside complex' | 'Outside complex'; residentReferral: boolean;
   flavour: string; cakeType: string; setup: 'Delivery' | 'Cake setup' | 'Self pickup'; deliveredBy: string;
   quantity: number; cakeWeight: string; cakeMessage: string; amount: number; advancePaid: number; payments?: OrderPayment[];
-  deliveryAmount: number; deliveryMethod: 'Cab' | 'Delivery man' | 'Porter'; deliveryFeeType: 'Free' | 'Paid'; deliveryBookedBy: 'Client' | 'Us'; deliveryCost: number; extraExpenses: number; dueDate: string; status: OrderStatus;
+  deliveryAmount: number; deliveryMethod: 'Cab' | 'Delivery man' | 'Porter'; deliveryFeeType: 'Free' | 'Paid'; deliveryBookedBy: 'Client' | 'Us'; deliveryCost: number; extraExpenses: number; deliveryExpense?: number; dueDate: string; status: OrderStatus;
 }
 
 export interface ClientHistory {
@@ -185,10 +185,14 @@ export class FirebaseDataService {
   async addOrder(order: Omit<CakeOrder, 'id'>): Promise<void> { await this.runOperation('Saving order…', async () => { const db = await this.getDb(); await addDoc(collection(db, 'orders'), order); }); }
   async updateOrder(order: CakeOrder): Promise<void> { await this.runOperation('Updating order…', async () => { const db = await this.getDb(); const { id, ...data } = order; await setDoc(doc(db, 'orders', id), data); }); }
   async deleteOrder(id: string): Promise<void> { await this.runOperation('Deleting order…', async () => { const db = await this.getDb(); await deleteDoc(doc(db, 'orders', id)); }); }
-  async updateOrderStatus(id: string, status: OrderStatus): Promise<OrderStatus> {
+  async updateOrderStatus(id: string, status: OrderStatus, deliveryExpense?: number): Promise<OrderStatus> {
     const order = this.orders().find(item => item.id === id); if (!order) throw new Error('Order not found.');
+    const needsExpense = order.setup === 'Cake setup' || (order.setup === 'Delivery' && (order.deliveryMethod === 'Cab' || order.deliveryMethod === 'Porter'));
+    if (needsExpense && status === 'Delivered' && (deliveryExpense === undefined || !Number.isFinite(deliveryExpense) || deliveryExpense < 0)) throw new Error('Enter the delivery or setup expense, or zero if there was no cost.');
     const nextStatus: OrderStatus = status === 'Delivered' && order.advancePaid >= order.amount + order.deliveryAmount ? 'Closed' : status;
-    await this.runOperation('Updating order status…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { status: nextStatus }); });
+    const actualExpense = status === 'Delivered' && order.setup === 'Delivery' && order.deliveryMethod === 'Delivery man'
+      ? (order.deliveryBookedBy === 'Us' ? Number(order.deliveryCost ?? 0) : 0) : deliveryExpense;
+    await this.runOperation('Updating order status…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), actualExpense === undefined ? { status: nextStatus } : { status: nextStatus, deliveryExpense: actualExpense }); });
     return nextStatus;
   }
   async recordOrderPayment(id: string, payment: OrderPayment): Promise<void> {

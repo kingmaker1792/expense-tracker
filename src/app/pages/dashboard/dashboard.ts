@@ -32,6 +32,10 @@ export class Dashboard {
   readonly allCakeExpenseValue = computed(() => this.data.expenses().filter(item=>item.type==='cake').reduce((sum,item)=>sum+item.amount,0));
   readonly allHomeExpenseValue = computed(() => this.data.allExpenses().filter(item=>item.type==='home').reduce((sum,item)=>sum+item.amount,0));
   readonly allOrderValue = computed(() => this.data.orders().reduce((sum,order)=>sum+this.orderValue(order),0));
+  readonly currentDeliveryIncome = computed(() => this.data.orders().filter(order=>this.isSameMonth(order.dueDate,new Date())).reduce((sum,order)=>sum+order.deliveryAmount,0));
+  readonly allDeliveryIncome = computed(() => this.data.orders().reduce((sum,order)=>sum+order.deliveryAmount,0));
+  readonly currentDeliveryExpense = computed(() => this.data.orders().filter(order=>this.isSameMonth(order.dueDate,new Date())).reduce((sum,order)=>sum+this.deliveryExpenseValue(order),0));
+  readonly allDeliveryExpense = computed(() => this.data.orders().reduce((sum,order)=>sum+this.deliveryExpenseValue(order),0));
   readonly currentActiveOrders = computed(() => { const now=new Date(); return this.data.orders().filter(order=>order.status!=='Closed'&&this.isSameMonth(order.dueDate,now)).length; });
   readonly activeOrderValue = computed(() => this.data.orders().filter(order=>order.status!=='Closed').reduce((sum,order)=>sum+this.orderValue(order),0));
   readonly expenseSeries = computed(() => {
@@ -66,16 +70,16 @@ export class Dashboard {
     return this.revenueSeries().map((point,index)=>{
       const date=new Date(now.getFullYear(),now.getMonth()-11+index,1);
       const cakeCost=this.data.expenses().filter(item=>{const d=new Date(`${item.date}T00:00:00`);return item.type==='cake'&&d.getFullYear()===date.getFullYear()&&d.getMonth()===date.getMonth();}).reduce((sum,item)=>sum+item.amount,0);
-      const extraCost=this.monthOrders(date).reduce((sum,order)=>sum+order.extraExpenses,0);
+      const extraCost=this.monthOrders(date).reduce((sum,order)=>sum+order.extraExpenses+this.deliveryExpenseValue(order),0);
       const profit=point.total-cakeCost-extraCost;
       return {...point,cakeCost,extraCost,profit,margin:point.total?Math.round(profit/point.total*100):0};
     });
   });
   readonly currentProfit = computed(() => this.profitSeries().at(-1) ?? {profit:0,margin:0,cakeCost:0,extraCost:0,total:0,month:''});
-  readonly allTimeProfit = computed(() => { const revenue=this.allOrderValue(); const costs=this.allCakeExpenseValue()+this.data.orders().reduce((sum,order)=>sum+order.extraExpenses,0); const profit=revenue-costs; return {profit,margin:revenue?Math.round(profit/revenue*100):0}; });
+  readonly allTimeProfit = computed(() => { const revenue=this.allOrderValue(); const costs=this.allCakeExpenseValue()+this.data.orders().reduce((sum,order)=>sum+order.extraExpenses+this.deliveryExpenseValue(order),0); const profit=revenue-costs; return {profit,margin:revenue?Math.round(profit/revenue*100):0}; });
   readonly monthComparison = computed(() => {
     const now=new Date(); const current=new Date(now.getFullYear(),now.getMonth(),1); const previous=new Date(now.getFullYear(),now.getMonth()-1,1);
-    const summarize=(date:Date)=>{ const orders=this.monthOrders(date); const revenue=orders.reduce((sum,order)=>sum+this.orderValue(order),0); const expenses=this.data.allExpenses().filter(item=>this.isSameMonth(item.date,date)).reduce((sum,item)=>sum+item.amount,0); const cakeCosts=this.data.expenses().filter(item=>item.type==='cake'&&this.isSameMonth(item.date,date)).reduce((sum,item)=>sum+item.amount,0); const profit=revenue-cakeCosts-orders.reduce((sum,order)=>sum+order.extraExpenses,0); return {orders:orders.length,revenue,expenses,profit}; };
+    const summarize=(date:Date)=>{ const orders=this.monthOrders(date); const revenue=orders.reduce((sum,order)=>sum+this.orderValue(order),0); const expenses=this.data.allExpenses().filter(item=>this.isSameMonth(item.date,date)).reduce((sum,item)=>sum+item.amount,0); const cakeCosts=this.data.expenses().filter(item=>item.type==='cake'&&this.isSameMonth(item.date,date)).reduce((sum,item)=>sum+item.amount,0); const profit=revenue-cakeCosts-orders.reduce((sum,order)=>sum+order.extraExpenses+this.deliveryExpenseValue(order),0); return {orders:orders.length,revenue,expenses,profit}; };
     const currentData=summarize(current); const previousData=summarize(previous);
     return [
       {label:'Orders',current:currentData.orders,previous:previousData.orders,currency:false},
@@ -111,6 +115,7 @@ export class Dashboard {
   contributionShare(value:number): number { return this.contributionTotal() ? Math.round(value/this.contributionTotal()*100) : 0; }
   orderSize(order: Pick<CakeOrder, 'cakeType'|'cakeWeight'|'quantity'>): string { return order.cakeType === 'Cupcake' || order.cakeType === 'Brownie' ? `${order.quantity} piece${order.quantity===1?'':'s'}` : order.cakeWeight; }
   private orderValue(order: Pick<CakeOrder, 'amount'|'deliveryAmount'>): number { return order.amount + order.deliveryAmount; }
+  private deliveryExpenseValue(order:CakeOrder):number { return Number(order.deliveryExpense ?? ((order.status==='Delivered'||order.status==='Closed')&&order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0)) || 0; }
   private monthOrders(date: Date): CakeOrder[] { return this.data.orders().filter(order => { const d = new Date(`${order.dueDate}T00:00:00`); return d.getFullYear() === date.getFullYear() && d.getMonth() === date.getMonth(); }); }
   private isSameMonth(value:string,date:Date):boolean { const item=new Date(`${value}T00:00:00`); return item.getFullYear()===date.getFullYear()&&item.getMonth()===date.getMonth(); }
   private monthKey(date:Date): string { return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}`; }
