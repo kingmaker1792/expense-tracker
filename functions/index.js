@@ -13,7 +13,7 @@ const db = getFirestore();
 function configuration() {
   const config = JSON.parse(whatsappConfig.value());
   const recipients = [...new Set(config.recipients || [])];
-  if (!/^\d{10,15}$/.test(String(config.phoneNumberId)) || !config.accessToken || !recipients.length ||
+  if (!/^\d{10,20}$/.test(String(config.phoneNumberId)) || !config.accessToken || !recipients.length ||
       recipients.some(number => !/^\d{10,15}$/.test(String(number)))) {
     throw new Error('WhatsApp reminder configuration is incomplete.');
   }
