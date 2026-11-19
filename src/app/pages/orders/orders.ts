@@ -2,11 +2,11 @@ import { SlicePipe } from '@angular/common';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { CakeOrder, ClientHistory, FirebaseDataService, OrderPayment, OrderStatus } from '../../firebase-data.service';
+import { CakeOrder, ClientHistory, DeliveryExpenseInput, FirebaseDataService, OrderPayment, OrderStatus } from '../../firebase-data.service';
 
 type OrderFilter = 'all' | OrderStatus | 'delivered-paid' | 'delivered-unpaid';
-type OrderPeriod = 'current' | 'last1' | 'last3' | 'last6' | 'next1' | 'next3' | 'active' | 'custom' | 'all';
-type OrderColorFilter = 'all' | 'today' | 'future' | 'past-due' | 'past-closed';
+type OrderPeriod = 'current' | 'last1' | 'last3' | 'last6' | 'next1' | 'next3' | 'active' | 'overdue' | 'custom' | 'all';
+type OrderColorFilter = 'all' | 'today' | 'future' | 'overdue' | 'past-due' | 'past-closed';
 type ContactPickerNavigator = Navigator & { contacts?: { select(fields: string[], options: { multiple: boolean }): Promise<Array<{ name?: string[]; tel?: string[] }>> } };
 
 @Component({ selector: 'app-orders', imports: [ReactiveFormsModule, SlicePipe], templateUrl: './orders.html' })
@@ -23,11 +23,11 @@ export class Orders {
   readonly customStart = signal(''); readonly customEnd = signal(''); readonly orderSearch = signal('');
   readonly clientMode = signal<'existing'|'new'>('existing'); readonly clientSearch = signal(''); readonly clientPickerOpen = signal(false);
   readonly contactPickerSupported=typeof navigator!=='undefined' && !!(navigator as ContactPickerNavigator).contacts?.select;
-  constructor() { this.route.queryParamMap.subscribe(params => { const view=params.get('view'); if(view==='active') this.setPeriod('active'); else if(view==='all') this.setPeriod('all'); const location=params.get('location'); if(location==='Inside complex'||location==='Outside complex')this.locationFilter.set(location); if(params.get('referral')==='yes')this.referralFilter.set('yes'); }); }
+  constructor() { this.route.queryParamMap.subscribe(params => { const view=params.get('view'); if(view==='active'||view==='overdue') this.setPeriod(view); else if(view==='all') this.setPeriod('all'); const location=params.get('location'); if(location==='Inside complex'||location==='Outside complex')this.locationFilter.set(location); if(params.get('referral')==='yes')this.referralFilter.set('yes'); }); }
   readonly clientMatches = computed(() => { const q=this.clientSearch().trim().toLocaleLowerCase(); return this.data.clients().filter(client=>!q||`${client.name} ${client.phone}`.toLocaleLowerCase().includes(q)).slice(0,8); });
   readonly filtered = computed(() => {
-    const exactMonth=this.selectedMonth(); const period=this.period(); const range=period==='all'||period==='active'||period==='custom'?null:this.periodRange(period); const q=this.orderSearch().trim().toLocaleLowerCase();
-    return this.data.orders().filter(o => { if(exactMonth) return o.dueDate.startsWith(exactMonth); if(period==='active') return o.status!=='Closed'; if(period==='custom') return (!this.customStart()||o.dueDate>=this.customStart())&&(!this.customEnd()||o.dueDate<=this.customEnd()); if(!range) return true; const date = new Date(`${o.dueDate}T00:00:00`); return date >= range.start && date <= range.end; })
+    const exactMonth=this.selectedMonth(); const period=this.period(); const range=period==='all'||period==='active'||period==='overdue'||period==='custom'?null:this.periodRange(period); const q=this.orderSearch().trim().toLocaleLowerCase();
+    return this.data.orders().filter(o => { if(exactMonth) return o.dueDate.startsWith(exactMonth); if(period==='active') return o.status!=='Closed'; if(period==='overdue')return this.isOverdue(o); if(period==='custom') return (!this.customStart()||o.dueDate>=this.customStart())&&(!this.customEnd()||o.dueDate<=this.customEnd()); if(!range) return true; const date = new Date(`${o.dueDate}T00:00:00`); return date >= range.start && date <= range.end; })
       .filter(o => !q || `${o.customer} ${o.phone} ${o.cakeType} ${o.flavour} ${o.occasion} ${o.cakeMessage}`.toLocaleLowerCase().includes(q))
       .filter(o=>this.locationFilter()==='all'||o.location===this.locationFilter())
       .filter(o=>this.referralFilter()==='all'||o.residentReferral===(this.referralFilter()==='yes'))
@@ -44,18 +44,19 @@ export class Orders {
       due: orders.reduce((sum, order) => sum + this.balance(order), 0),
     };
   });
+  readonly overdueOrders = computed(() => this.data.orders().filter(order=>this.isOverdue(order)).sort((a,b)=>a.dueDate.localeCompare(b.dueDate)));
   readonly monthOptions = computed(() => [...new Set(this.data.orders().map(order=>order.dueDate.slice(0,7)).filter(key=>/^\d{4}-\d{2}$/.test(key)))].sort((a,b)=>b.localeCompare(a)).map(value=>({value,label:new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(new Date(`${value}-01T00:00:00`))})));
-  readonly rangeLabel = computed(() => { const exact=this.selectedMonth(); if(exact) return new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(new Date(`${exact}-01T00:00:00`)); const period=this.period(); if(period==='active') return 'All active orders · Any date'; if(period==='all') return 'All order dates'; if(period==='custom') return this.customStart()||this.customEnd()?`${this.customStart()||'Beginning'} – ${this.customEnd()||'Today'}`:'Choose custom dates'; const {start,end}=this.periodRange(period); const fmt=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'}); return `${fmt.format(start)} – ${fmt.format(end)}`; });
+  readonly rangeLabel = computed(() => { const exact=this.selectedMonth(); if(exact) return new Intl.DateTimeFormat('en-IN',{month:'long',year:'numeric'}).format(new Date(`${exact}-01T00:00:00`)); const period=this.period(); if(period==='active') return 'All active orders · Any date'; if(period==='overdue')return 'Overdue orders · Any month'; if(period==='all') return 'All order dates'; if(period==='custom') return this.customStart()||this.customEnd()?`${this.customStart()||'Beginning'} – ${this.customEnd()||'Today'}`:'Choose custom dates'; const {start,end}=this.periodRange(period); const fmt=new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'}); return `${fmt.format(start)} – ${fmt.format(end)}`; });
   readonly form = this.fb.nonNullable.group({
     customer: ['', Validators.required], phone: ['', [Validators.required, Validators.minLength(6), Validators.maxLength(20)]], address: [''], occasion: ['', Validators.required],
     flavour: ['', Validators.required], cakeType: ['', Validators.required], setup: ['Self pickup' as CakeOrder['setup'], Validators.required], deliveredBy: [''], deliveryMethod: ['Cab' as CakeOrder['deliveryMethod'], Validators.required], deliveryFeeType: ['Paid' as CakeOrder['deliveryFeeType'], Validators.required], deliveryBookedBy: ['Client' as CakeOrder['deliveryBookedBy'], Validators.required], deliveryCost: [0, Validators.min(0)],
     quantity: [1, [Validators.required, Validators.min(1)]], cakeWeight: [''], cakeMessage: [''],
-    amount: [null as number | null, [Validators.required, Validators.min(1)]], advancePaid: [0, Validators.min(0)], paymentDate: [this.today(), Validators.required], deliveryAmount: [0, Validators.min(0)], extraExpenses: [0, Validators.min(0)], deliveryExpense: [null as number | null, Validators.min(0)],
+    amount: [null as number | null, [Validators.required, Validators.min(1)]], advancePaid: [0, Validators.min(0)], paymentDate: [this.today(), Validators.required], deliveryAmount: [0, Validators.min(0)], extraExpenses: [0, Validators.min(0)], deliveryExpense: [null as number | null, Validators.min(0)], deliveryExpenseDate: [this.today(), Validators.required], deliveryExpenseMode: ['GPay', Validators.required], deliveryExpensePaidBy: ['Sonam', Validators.required],
     dueDate: [this.today(), Validators.required], status: ['Confirmed' as OrderStatus, Validators.required],
     location: ['Outside complex' as CakeOrder['location'], Validators.required], residentReferral: [false],
   });
   readonly paymentForm = this.fb.nonNullable.group({ amount: [0, [Validators.required, Validators.min(0.01)]], date: [this.today(), Validators.required], type: ['Delivery' as OrderPayment['type'], Validators.required] });
-  readonly deliveryExpenseForm = this.fb.group({ amount: [null as number | null, [Validators.required, Validators.min(0)]] });
+  readonly deliveryExpenseForm = this.fb.nonNullable.group({ amount: [null as number | null, [Validators.required, Validators.min(0)]], date: [this.today(), Validators.required], paymentMode: ['GPay', Validators.required], paidBy: ['Sonam', Validators.required] });
 
   async save(): Promise<void> {
     const v=this.form.getRawValue();
@@ -64,14 +65,16 @@ export class Orders {
     const deliveryNeedsCost=v.setup==='Delivery'&&v.deliveryFeeType==='Paid'&&(v.deliveryMethod==='Delivery man'||v.deliveryBookedBy==='Us');
     if (this.form.invalid || (v.cakeType!=='Hamper' && !pieceProduct && !v.cakeWeight) || (v.setup !== 'Self pickup' && !v.address.trim()) || (v.setup === 'Delivery' && (!v.deliveredBy.trim() || (deliveryNeedsCost && Number(v.deliveryCost)<=0)))) { this.form.markAllAsTouched(); this.scrollToFirstInvalid(); this.notify('Please complete the highlighted fields.', true); return; }
     const trackedDeliveryCost=v.setup==='Delivery'&&v.deliveryFeeType==='Paid'?Number(v.deliveryCost):0; const includedDeliveryAmount=v.setup==='Delivery'&&v.deliveryFeeType==='Paid'&&(v.deliveryMethod==='Delivery man'||v.deliveryBookedBy==='Us')?trackedDeliveryCost:0; const total=Number(v.amount)+includedDeliveryAmount; const paid=Number(v.advancePaid); if(paid>total){this.notify('Paid amount cannot exceed the order total.',true);return;} const status:OrderStatus = (v.status === 'Delivered' || v.status === 'Closed') ? (paid >= total ? 'Closed' : 'Delivered') : v.status;
-    const id=this.editingId(); const previous=id?this.data.orders().find(order=>order.id===id):undefined; const payments:OrderPayment[]=[...(previous?.payments??[])]; const change=paid-(previous?.advancePaid??0); if(change!==0)payments.push({id:crypto.randomUUID(),amount:change,date:v.paymentDate,type:previous?'Correction':'Advance'}); const {paymentDate:_,...orderValues}=v; const actualDeliveryExpense=v.setup==='Delivery'&&v.deliveryMethod==='Delivery man'&&status!=='Confirmed'&&status!=='In progress'&&status!=='Ready' ? includedDeliveryAmount : this.needsDeliveryExpense(v.setup,v.deliveryMethod)?Number(v.deliveryExpense??0):0; const record={ ...orderValues, id:id??'', phone:v.phone.trim(), amount:Number(v.amount), advancePaid:paid, payments, deliveryAmount:includedDeliveryAmount, deliveryCost:trackedDeliveryCost, deliveryMethod:v.setup==='Delivery'?v.deliveryMethod:'Delivery man', deliveryFeeType:v.setup==='Delivery'?v.deliveryFeeType:'Free', deliveryBookedBy:v.setup==='Delivery'&&v.deliveryMethod!=='Delivery man'&&v.deliveryFeeType==='Paid'?v.deliveryBookedBy:v.deliveryMethod==='Delivery man'&&v.deliveryFeeType==='Paid'?'Us':'Client', deliveredBy:v.setup==='Delivery'?v.deliveredBy:'', extraExpenses:Number(v.extraExpenses), deliveryExpense:actualDeliveryExpense, flavour:v.cakeType==='Hamper'?'':v.flavour, cakeMessage:v.cakeType==='Hamper'?'':v.cakeMessage, quantity:pieceProduct?Number(v.quantity):1, cakeWeight:pieceProduct||v.cakeType==='Hamper'?'':v.cakeWeight, status } as CakeOrder;
-    try { if(id) await this.data.updateOrder(record); else { const {id:_,...newOrder}=record; await this.data.addOrder(newOrder); } this.notify(id ? 'Order updated successfully.' : 'Cake order added successfully.'); this.closeForm(); } catch { this.notify('Unable to save order. Check Firebase access.', true); }
+    const id=this.editingId(); const previous=id?this.data.orders().find(order=>order.id===id):undefined; const payments:OrderPayment[]=[...(previous?.payments??[])]; const change=paid-(previous?.advancePaid??0); if(change!==0)payments.push({id:crypto.randomUUID(),amount:change,date:v.paymentDate,type:previous?'Correction':'Advance'}); const {paymentDate:_,deliveryExpenseDate:__,deliveryExpenseMode:___,deliveryExpensePaidBy:____,...orderValues}=v; const actualDeliveryExpense=v.setup==='Self pickup'?0:Number(v.deliveryExpense??0); const record={ ...orderValues, id:id??'', phone:v.phone.trim(), amount:Number(v.amount), advancePaid:paid, payments, deliveryAmount:includedDeliveryAmount, deliveryCost:trackedDeliveryCost, deliveryMethod:v.setup==='Delivery'?v.deliveryMethod:'Delivery man', deliveryFeeType:v.setup==='Delivery'?v.deliveryFeeType:'Free', deliveryBookedBy:v.setup==='Delivery'&&v.deliveryMethod!=='Delivery man'&&v.deliveryFeeType==='Paid'?v.deliveryBookedBy:v.deliveryMethod==='Delivery man'&&v.deliveryFeeType==='Paid'?'Us':'Client', deliveredBy:v.setup==='Delivery'?v.deliveredBy:'', extraExpenses:Number(v.extraExpenses), deliveryExpense:actualDeliveryExpense, flavour:v.cakeType==='Hamper'?'':v.flavour, cakeMessage:v.cakeType==='Hamper'?'':v.cakeMessage, quantity:pieceProduct?Number(v.quantity):1, cakeWeight:pieceProduct||v.cakeType==='Hamper'?'':v.cakeWeight, status } as CakeOrder;
+    const expense:DeliveryExpenseInput|undefined=(status==='Delivered'||status==='Closed')&&v.setup!=='Self pickup'?{amount:actualDeliveryExpense,date:v.deliveryExpenseDate,paymentMode:v.deliveryExpenseMode,paidBy:v.deliveryExpensePaidBy}:undefined;
+    try { if(id) await this.data.updateOrder(record,expense); else { const {id:_,...newOrder}=record; await this.data.addOrder(newOrder,expense); } this.notify(id ? 'Order updated successfully.' : 'Cake order added successfully.'); this.closeForm(); } catch { this.notify('Unable to save order. Check Firebase access.', true); }
   }
   openNewOrder():void { this.modalReturnFocus=document.activeElement as HTMLElement; this.closeForm(); this.clientMode.set(this.data.clients().length?'existing':'new'); this.showForm.set(true); this.focusOrderDialog(); }
   edit(order:CakeOrder):void { this.modalReturnFocus=document.activeElement as HTMLElement; this.editingId.set(order.id); this.resetOrderForm(); this.showForm.set(true); this.focusOrderDialog(); }
   resetOrderForm():void {
     const order=this.data.orders().find(item=>item.id===this.editingId());
-    this.form.reset(order?{...order,deliveryExpense:order.deliveryExpense??((order.status==='Delivered'||order.status==='Closed')&&order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0),paymentDate:this.today()}:this.defaults());
+    const savedExpense=order?this.deliveryExpenseRecord(order):undefined;
+    this.form.reset(order?{...order,deliveryExpense:order.status==='Delivered'||order.status==='Closed'?savedExpense?.amount??this.deliveryExpenseValue(order):null,deliveryExpenseDate:savedExpense?.date??this.today(),deliveryExpenseMode:savedExpense?.paymentMode??'GPay',deliveryExpensePaidBy:savedExpense?.paidBy??'Sonam',paymentDate:this.today()}:this.defaults());
     this.onProductTypeChangeValue(order?.cakeType??'');
     this.refreshRequiredFields();
     this.clientMode.set(order?'new':this.data.clients().length?'existing':'new');
@@ -134,7 +137,7 @@ export class Orders {
   paymentTimeline(order:CakeOrder):OrderPayment[] {return [...(order.payments??[])].sort((a,b)=>a.date.localeCompare(b.date));}
   earlierPaid(order:CakeOrder):number {return Math.max(0,order.advancePaid-(order.payments??[]).reduce((sum,payment)=>sum+payment.amount,0));}
   setFilter(e: Event):void { this.filter.set((e.target as HTMLSelectElement).value as OrderFilter); }
-  setPeriod(value: OrderPeriod):void { if(value==='active'){this.clearFilters();this.period.set('active');return;} this.period.set(value); this.selectedMonth.set(''); }
+  setPeriod(value: OrderPeriod):void { if(value==='active'||value==='overdue'){this.clearFilters();this.period.set(value);return;} this.period.set(value); this.selectedMonth.set(''); }
   setPeriodFromSelect(event:Event):void { this.setPeriod((event.target as HTMLSelectElement).value as OrderPeriod); }
   setExactMonth(event:Event):void { this.selectedMonth.set((event.target as HTMLSelectElement).value); }
   setCustomStart(event:Event):void { this.customStart.set((event.target as HTMLInputElement).value); this.period.set('custom'); this.selectedMonth.set(''); }
@@ -143,6 +146,7 @@ export class Orders {
   setLocationFilter(event:Event):void { this.locationFilter.set((event.target as HTMLSelectElement).value as 'all'|'Inside complex'|'Outside complex'); }
   setReferralFilter(event:Event):void { this.referralFilter.set((event.target as HTMLSelectElement).value as 'all'|'yes'|'no'); }
   showMetric(metric:'active'|'value'|'collected'|'due'):void { this.clearFilters(); if(metric==='active')this.setPeriod('active'); else {this.setPeriod('all');this.metricFilter.set(metric);} this.scrollToOrders(); }
+  showOverdueOrders():void { this.setPeriod('overdue'); this.scrollToOrders(); }
   setColorFilter(color:Exclude<OrderColorFilter,'all'>):void {if(this.colorFilter()===color){this.clearFilters();return;}this.clearFilters();this.period.set('all');this.colorFilter.set(color);this.scrollToOrders();}
   clearFilters():void { this.period.set('current');this.selectedMonth.set('');this.filter.set('all');this.orderSearch.set('');this.customStart.set('');this.customEnd.set('');this.locationFilter.set('all');this.referralFilter.set('all');this.metricFilter.set('all');this.colorFilter.set('all'); }
   private scrollToOrders():void { setTimeout(()=>document.querySelector('.data-panel')?.scrollIntoView({behavior:'smooth',block:'start'})); }
@@ -152,23 +156,29 @@ export class Orders {
     const select=e.target as HTMLSelectElement; const requested=select.value as OrderStatus;
     if(this.needsDeliveryExpense(order.setup,order.deliveryMethod)&&requested==='Delivered'){
       select.value=order.status;
-      this.deliveryExpenseForm.reset({amount:order.deliveryExpense&&order.deliveryExpense>0?order.deliveryExpense:order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0});
-      this.deliveryExpenseTarget.set(order);
+      this.openDeliveryExpense(order);
       return;
     }
     try { const status=await this.data.updateOrderStatus(id,requested); this.notify(status==='Closed'?'Delivered and fully paid — order closed.':'Order status updated.'); } catch { select.value=order.status; this.notify('Unable to update order status.', true); }
   }
   async confirmDeliveryExpense():Promise<void> {
-    const order=this.deliveryExpenseTarget(); const amount=this.deliveryExpenseForm.controls.amount.value;
-    if(!order||this.deliveryExpenseForm.invalid||amount===null){this.deliveryExpenseForm.markAllAsTouched();return;}
-    try {const status=await this.data.updateOrderStatus(order.id,'Delivered',Number(amount));this.deliveryExpenseTarget.set(null);this.notify(status==='Closed'?'Expense saved. Order closed.':'Expense saved. Order delivered.');}
-    catch {this.notify('Unable to save setup expense and delivery status.',true);}
+    const order=this.deliveryExpenseTarget(); const value=this.deliveryExpenseForm.getRawValue();
+    if(!order||this.deliveryExpenseForm.invalid||value.amount===null){this.deliveryExpenseForm.markAllAsTouched();return;}
+    try {const status=await this.data.updateOrderStatus(order.id,'Delivered',{amount:Number(value.amount),date:value.date,paymentMode:value.paymentMode,paidBy:value.paidBy});this.deliveryExpenseTarget.set(null);this.notify(status==='Closed'?'Expense saved. Order closed.':'Expense saved. Order delivered.');}
+    catch {this.notify('Unable to save the delivery expense.',true);}
+  }
+  openDeliveryExpense(order:CakeOrder):void {
+    const saved=this.deliveryExpenseRecord(order);
+    this.deliveryExpenseForm.reset({amount:saved?.amount??((order.status==='Delivered'||order.status==='Closed')?this.deliveryExpenseValue(order):null),date:saved?.date??this.today(),paymentMode:saved?.paymentMode??'GPay',paidBy:saved?.paidBy??'Sonam'});
+    this.deliveryExpenseTarget.set(order);
   }
   total(o:{amount:number;deliveryAmount:number}):number { return o.amount+o.deliveryAmount; }
   balance(o:{amount:number;deliveryAmount:number;advancePaid:number}):number { return Math.max(0,this.total(o)-o.advancePaid); }
   isPieceProduct(cakeType=this.form.controls.cakeType.value):boolean { return cakeType === 'Cupcake' || cakeType === 'Brownie'; }
-  needsDeliveryExpense(setup:CakeOrder['setup'],method:CakeOrder['deliveryMethod']):boolean { return setup==='Cake setup'||setup==='Delivery'&&(method==='Cab'||method==='Porter'); }
-  deliveryExpenseValue(order:CakeOrder):number { return Number(order.deliveryExpense??((order.status==='Delivered'||order.status==='Closed')&&order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0))||0; }
+  needsDeliveryExpense(setup:CakeOrder['setup'],_method:CakeOrder['deliveryMethod']):boolean { return setup!=='Self pickup'; }
+  deliveryExpenseRecord(order:CakeOrder){return this.data.expenses().find(item=>item.id===`order-delivery-${order.id}`);}
+  deliveryExpenseValue(order:CakeOrder):number { const saved=this.deliveryExpenseRecord(order);if(saved)return saved.amount;if(order.deliveryExpenseSynced)return 0;return Number(order.deliveryExpense??((order.status==='Delivered'||order.status==='Closed')&&order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0))||0; }
+  isOverdue(order:CakeOrder):boolean { return order.dueDate<this.today() && !['Delivered','Closed'].includes(order.status); }
   orderSize(order:Pick<CakeOrder,'cakeType'|'cakeWeight'|'quantity'>):string { return order.cakeType==='Hamper'?'':this.isPieceProduct(order.cakeType) ? `${order.quantity} piece${order.quantity===1?'':'s'}` : order.cakeWeight; }
   reminderOrders(daysAhead:number):CakeOrder[] {const dueDate=this.reminderDate(daysAhead);return this.data.orders().filter(order=>order.dueDate===dueDate&&['Confirmed','In progress','Ready'].includes(order.status)).sort((a,b)=>a.customer.localeCompare(b.customer));}
   jumpToOrder(order:CakeOrder):void {
@@ -184,13 +194,13 @@ export class Orders {
   }
   private reminderDate(daysAhead:number):string {const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).formatToParts(new Date());const values=Object.fromEntries(parts.map(part=>[part.type,part.value]));const date=new Date(Date.UTC(Number(values['year']),Number(values['month'])-1,Number(values['day'])+daysAhead));return date.toISOString().slice(0,10);}
   isSoon(date:string):boolean {const today=this.today();const end=new Date(`${today}T00:00:00`);end.setDate(end.getDate()+3);const until=`${end.getFullYear()}-${String(end.getMonth()+1).padStart(2,'0')}-${String(end.getDate()).padStart(2,'0')}`;return date>=today&&date<=until;}
-  orderTone(order:CakeOrder):string{const today=this.today();if(order.dueDate<today){if(order.status==='Closed')return 'past-closed';if(this.balance(order)>0)return 'past-due';return 'past-open';}if(order.status==='Closed')return 'past-closed';return order.dueDate===today?'today':this.isSoon(order.dueDate)?'soon':'future';}
-  toneLabel(order:CakeOrder):string{switch(this.orderTone(order)){case 'today':return 'Due today';case 'soon':return 'Next 3 days';case 'future':return 'Future order';case 'past-closed':return 'Closed';case 'past-due':return 'Past · payment due';default:return 'Past · update status';}}
+  orderTone(order:CakeOrder):string{const today=this.today();if(order.dueDate<today){if(this.isOverdue(order))return 'overdue';if(order.status==='Closed')return 'past-closed';if(this.balance(order)>0)return 'past-due';return 'past-open';}if(order.status==='Closed')return 'past-closed';return order.dueDate===today?'today':this.isSoon(order.dueDate)?'soon':'future';}
+  toneLabel(order:CakeOrder):string{switch(this.orderTone(order)){case 'today':return 'Due today';case 'soon':return 'Next 3 days';case 'future':return 'Future order';case 'overdue':return 'Overdue · not delivered';case 'past-closed':return 'Closed';case 'past-due':return 'Past · payment due';default:return 'Past · update status';}}
   currency(v:number):string { return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:2}).format(v); }
   formatPaymentDate(date:string):string {return new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'}).format(new Date(`${date}T00:00:00`));}
-  private defaults(){return {customer:'',phone:'',address:'',occasion:'',flavour:'',cakeType:'',setup:'Self pickup' as CakeOrder['setup'],deliveredBy:'',deliveryMethod:'Cab' as CakeOrder['deliveryMethod'],deliveryFeeType:'Paid' as CakeOrder['deliveryFeeType'],deliveryBookedBy:'Client' as CakeOrder['deliveryBookedBy'],deliveryCost:0,quantity:1,cakeWeight:'',cakeMessage:'',amount:null,advancePaid:0,paymentDate:this.today(),deliveryAmount:0,extraExpenses:0,deliveryExpense:null,dueDate:this.today(),status:'Confirmed' as OrderStatus,location:'Outside complex' as CakeOrder['location'],residentReferral:false};}
+  private defaults(){return {customer:'',phone:'',address:'',occasion:'',flavour:'',cakeType:'',setup:'Self pickup' as CakeOrder['setup'],deliveredBy:'',deliveryMethod:'Cab' as CakeOrder['deliveryMethod'],deliveryFeeType:'Paid' as CakeOrder['deliveryFeeType'],deliveryBookedBy:'Client' as CakeOrder['deliveryBookedBy'],deliveryCost:0,quantity:1,cakeWeight:'',cakeMessage:'',amount:null,advancePaid:0,paymentDate:this.today(),deliveryAmount:0,extraExpenses:0,deliveryExpense:null,deliveryExpenseDate:this.today(),deliveryExpenseMode:'GPay',deliveryExpensePaidBy:'Sonam',dueDate:this.today(),status:'Confirmed' as OrderStatus,location:'Outside complex' as CakeOrder['location'],residentReferral:false};}
   private today():string{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`}
-  private periodRange(period:Exclude<OrderPeriod,'all'|'active'|'custom'>):{start:Date;end:Date}{ const now=new Date(); if(period==='current') return {start:new Date(now.getFullYear(),now.getMonth(),1),end:new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59)}; if(period.startsWith('last')){const months=Number(period.slice(4));return {start:new Date(now.getFullYear(),now.getMonth()-months,1),end:new Date(now.getFullYear(),now.getMonth(),0,23,59,59)}} const months=period==='next1'?1:3; return {start:new Date(now.getFullYear(),now.getMonth()+1,1),end:new Date(now.getFullYear(),now.getMonth()+months+1,0,23,59,59)}; }
+  private periodRange(period:Exclude<OrderPeriod,'all'|'active'|'overdue'|'custom'>):{start:Date;end:Date}{ const now=new Date(); if(period==='current') return {start:new Date(now.getFullYear(),now.getMonth(),1),end:new Date(now.getFullYear(),now.getMonth()+1,0,23,59,59)}; if(period.startsWith('last')){const months=Number(period.slice(4));return {start:new Date(now.getFullYear(),now.getMonth()-months,1),end:new Date(now.getFullYear(),now.getMonth(),0,23,59,59)}} const months=period==='next1'?1:3; return {start:new Date(now.getFullYear(),now.getMonth()+1,1),end:new Date(now.getFullYear(),now.getMonth()+months+1,0,23,59,59)}; }
   private downloadCsv(filename:string,rows:(string|number)[][]):void { const csv=rows.map(row=>row.map(value=>`"${String(value).replace(/"/g,'""')}"`).join(',')).join('\r\n'); const url=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'})); const link=document.createElement('a'); link.href=url; link.download=filename; link.click(); URL.revokeObjectURL(url); }
   private notify(m:string,error=false):void { this.toast.set(`${error?'error':'success'}:${m}`); setTimeout(()=>this.toast.set(''),3000); }
 }

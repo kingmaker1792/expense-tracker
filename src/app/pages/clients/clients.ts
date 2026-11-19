@@ -39,6 +39,7 @@ export class Clients {
   total(order:Pick<CakeOrder,'amount'|'deliveryAmount'>):number{return order.amount+order.deliveryAmount;}
   balance(order:Pick<CakeOrder,'amount'|'deliveryAmount'|'advancePaid'>):number{return Math.max(0,this.total(order)-order.advancePaid);}
   orderSize(order:Pick<CakeOrder,'cakeType'|'cakeWeight'|'quantity'>):string{return order.cakeType==='Cupcake'||order.cakeType==='Brownie'?`${order.quantity} piece${order.quantity===1?'':'s'}`:order.cakeWeight;}
+  deliveryIncome(client:ClientHistory):number{return client.orders.reduce((sum,order)=>sum+order.deliveryAmount,0);}
   currency(value:number):string{return new Intl.NumberFormat('en-IN',{style:'currency',currency:'INR',maximumFractionDigits:0}).format(value);}
   formatDate(value:string):string{return new Intl.DateTimeFormat('en-IN',{day:'numeric',month:'short',year:'numeric'}).format(new Date(`${value}T00:00:00`));}
   initials(name:string):string{return name.split(' ').map(part=>part[0]).join('').slice(0,2).toUpperCase();}

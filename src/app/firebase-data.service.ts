@@ -13,6 +13,7 @@ import {
   runTransaction,
   setDoc,
   updateDoc,
+  Transaction,
 } from 'firebase/firestore';
 
 export type ExpenseType = 'cake' | 'home';
@@ -22,6 +23,7 @@ export interface OrderPayment { id: string; amount: number; date: string; type: 
 export interface Expense {
   id: string; name: string; amount: number; date: string; paymentMode: string; paidBy: string; type: ExpenseType; tripId?: string;
 }
+export interface DeliveryExpenseInput { amount: number; date: string; paymentMode: string; paidBy: string; }
 export interface Trip { id: string; name: string; destination: string; startDate: string; endDate: string; notes: string; }
 
 export interface CakeOrder {
@@ -29,7 +31,7 @@ export interface CakeOrder {
   location: 'Inside complex' | 'Outside complex'; residentReferral: boolean;
   flavour: string; cakeType: string; setup: 'Delivery' | 'Cake setup' | 'Self pickup'; deliveredBy: string;
   quantity: number; cakeWeight: string; cakeMessage: string; amount: number; advancePaid: number; payments?: OrderPayment[];
-  deliveryAmount: number; deliveryMethod: 'Cab' | 'Delivery man' | 'Porter'; deliveryFeeType: 'Free' | 'Paid'; deliveryBookedBy: 'Client' | 'Us'; deliveryCost: number; extraExpenses: number; deliveryExpense?: number; dueDate: string; status: OrderStatus;
+  deliveryAmount: number; deliveryMethod: 'Cab' | 'Delivery man' | 'Porter'; deliveryFeeType: 'Free' | 'Paid'; deliveryBookedBy: 'Client' | 'Us'; deliveryCost: number; extraExpenses: number; deliveryExpense?: number; deliveryExpenseSynced?: boolean; dueDate: string; status: OrderStatus;
 }
 
 export interface ClientHistory {
@@ -182,18 +184,59 @@ export class FirebaseDataService {
     });
   }
 
-  async addOrder(order: Omit<CakeOrder, 'id'>): Promise<void> { await this.runOperation('Saving order…', async () => { const db = await this.getDb(); await addDoc(collection(db, 'orders'), order); }); }
-  async updateOrder(order: CakeOrder): Promise<void> { await this.runOperation('Updating order…', async () => { const db = await this.getDb(); const { id, ...data } = order; await setDoc(doc(db, 'orders', id), data); }); }
-  async deleteOrder(id: string): Promise<void> { await this.runOperation('Deleting order…', async () => { const db = await this.getDb(); await deleteDoc(doc(db, 'orders', id)); }); }
-  async updateOrderStatus(id: string, status: OrderStatus, deliveryExpense?: number): Promise<OrderStatus> {
-    const order = this.orders().find(item => item.id === id); if (!order) throw new Error('Order not found.');
-    const needsExpense = order.setup === 'Cake setup' || (order.setup === 'Delivery' && (order.deliveryMethod === 'Cab' || order.deliveryMethod === 'Porter'));
-    if (needsExpense && status === 'Delivered' && (deliveryExpense === undefined || !Number.isFinite(deliveryExpense) || deliveryExpense < 0)) throw new Error('Enter the delivery or setup expense, or zero if there was no cost.');
-    const nextStatus: OrderStatus = status === 'Delivered' && order.advancePaid >= order.amount + order.deliveryAmount ? 'Closed' : status;
-    const actualExpense = status === 'Delivered' && order.setup === 'Delivery' && order.deliveryMethod === 'Delivery man'
-      ? (order.deliveryBookedBy === 'Us' ? Number(order.deliveryCost ?? 0) : 0) : deliveryExpense;
-    await this.runOperation('Updating order status…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), actualExpense === undefined ? { status: nextStatus } : { status: nextStatus, deliveryExpense: actualExpense }); });
-    return nextStatus;
+  async addOrder(order: Omit<CakeOrder, 'id'>, expense?: DeliveryExpenseInput): Promise<void> {
+    await this.runOperation('Saving order…', async () => {
+      const db = await this.getDb(); const orderRef = doc(collection(db, 'orders'));
+      await runTransaction(db, async transaction => {
+        transaction.set(orderRef, { ...order, deliveryExpenseSynced: true });
+        if (order.status === 'Delivered' || order.status === 'Closed') this.syncDeliveryExpense(transaction, db, orderRef.id, order, expense);
+      });
+    });
+  }
+  async updateOrder(order: CakeOrder, expense?: DeliveryExpenseInput): Promise<void> {
+    await this.runOperation('Updating order…', async () => {
+      const db = await this.getDb(); const { id, ...data } = order;
+      await runTransaction(db, async transaction => {
+        transaction.set(doc(db, 'orders', id), { ...data, deliveryExpenseSynced: true });
+        if (order.status === 'Delivered' || order.status === 'Closed') this.syncDeliveryExpense(transaction, db, id, order, expense);
+      });
+    });
+  }
+  async deleteOrder(id: string): Promise<void> {
+    await this.runOperation('Deleting order…', async () => {
+      const db = await this.getDb();
+      await runTransaction(db, async transaction => { transaction.delete(doc(db, 'orders', id)); transaction.delete(doc(db, 'expenses', `order-delivery-${id}`)); });
+    });
+  }
+  async updateOrderStatus(id: string, status: OrderStatus, expense?: DeliveryExpenseInput): Promise<OrderStatus> {
+    return this.runOperation('Updating order status…', async () => {
+      const db = await this.getDb();
+      return runTransaction(db, async transaction => {
+        const orderRef = doc(db, 'orders', id); const snapshot = await transaction.get(orderRef);
+        if (!snapshot.exists()) throw new Error('Order not found.');
+        const order = snapshot.data() as CakeOrder;
+        if (status === 'Delivered' && order.setup !== 'Self pickup' && !expense) throw new Error('Enter the delivery or setup expense, including zero if there was no cost.');
+        const nextStatus: OrderStatus = status === 'Delivered' && Number(order.advancePaid) >= Number(order.amount) + Number(order.deliveryAmount) ? 'Closed' : status;
+        if (status === 'Delivered') {
+          const amount = order.setup === 'Self pickup' ? 0 : Number(expense!.amount);
+          if (!Number.isFinite(amount) || amount < 0) throw new Error('Delivery expense must be zero or more.');
+          transaction.update(orderRef, { status: nextStatus, deliveryExpense: amount, deliveryExpenseSynced: true });
+          this.syncDeliveryExpense(transaction, db, id, order, order.setup === 'Self pickup' ? undefined : expense);
+        } else transaction.update(orderRef, { status: nextStatus });
+        return nextStatus;
+      });
+    });
+  }
+  private syncDeliveryExpense(transaction: Transaction, db: Firestore, id: string, order: Pick<CakeOrder, 'customer' | 'setup'>, expense?: DeliveryExpenseInput): void {
+    const expenseRef = doc(db, 'expenses', `order-delivery-${id}`);
+    if (order.setup === 'Self pickup' || !expense || expense.amount === 0) { transaction.delete(expenseRef); return; }
+    if (!Number.isFinite(expense.amount) || expense.amount < 0 || !/^\d{4}-\d{2}-\d{2}$/.test(expense.date)
+      || !['GPay', 'Cash', 'Debit card', 'Credit card'].includes(expense.paymentMode)
+      || !['Manmohan', 'Sonam', 'Nadani', 'Gopal'].includes(expense.paidBy)) throw new Error('Complete the delivery expense details.');
+    transaction.set(expenseRef, {
+      name: `${order.setup === 'Cake setup' ? 'Cake setup' : 'Delivery'} expense · ${order.customer}`.slice(0, 100),
+      amount: expense.amount, date: expense.date, paymentMode: expense.paymentMode, paidBy: expense.paidBy, type: 'cake',
+    });
   }
   async recordOrderPayment(id: string, payment: OrderPayment): Promise<void> {
     await this.runOperation('Recording payment…', async () => {
