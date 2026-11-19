@@ -13,6 +13,7 @@ type ContactPickerNavigator = Navigator & { contacts?: { select(fields: string[]
 export class Orders {
   private readonly fb = inject(FormBuilder); readonly data = inject(FirebaseDataService);
   private readonly route = inject(ActivatedRoute);
+  private modalReturnFocus:HTMLElement|null = null;
   readonly weights = Array.from({ length: 60 }, (_, index) => `${(index + 1) / 2} lb`);
   readonly showForm = signal(false); readonly deliveryModal = signal(false); readonly editingId = signal<string|null>(null); readonly deleteTarget = signal<CakeOrder|null>(null); readonly paymentTarget = signal<CakeOrder|null>(null); readonly deliveryExpenseTarget = signal<CakeOrder|null>(null);
   readonly highlightedOrder = signal<string|null>(null);
@@ -66,8 +67,27 @@ export class Orders {
     const id=this.editingId(); const previous=id?this.data.orders().find(order=>order.id===id):undefined; const payments:OrderPayment[]=[...(previous?.payments??[])]; const change=paid-(previous?.advancePaid??0); if(change!==0)payments.push({id:crypto.randomUUID(),amount:change,date:v.paymentDate,type:previous?'Correction':'Advance'}); const {paymentDate:_,...orderValues}=v; const actualDeliveryExpense=v.setup==='Delivery'&&v.deliveryMethod==='Delivery man'&&status!=='Confirmed'&&status!=='In progress'&&status!=='Ready' ? includedDeliveryAmount : this.needsDeliveryExpense(v.setup,v.deliveryMethod)?Number(v.deliveryExpense??0):0; const record={ ...orderValues, id:id??'', phone:v.phone.trim(), amount:Number(v.amount), advancePaid:paid, payments, deliveryAmount:includedDeliveryAmount, deliveryCost:trackedDeliveryCost, deliveryMethod:v.setup==='Delivery'?v.deliveryMethod:'Delivery man', deliveryFeeType:v.setup==='Delivery'?v.deliveryFeeType:'Free', deliveryBookedBy:v.setup==='Delivery'&&v.deliveryMethod!=='Delivery man'&&v.deliveryFeeType==='Paid'?v.deliveryBookedBy:v.deliveryMethod==='Delivery man'&&v.deliveryFeeType==='Paid'?'Us':'Client', deliveredBy:v.setup==='Delivery'?v.deliveredBy:'', extraExpenses:Number(v.extraExpenses), deliveryExpense:actualDeliveryExpense, flavour:v.cakeType==='Hamper'?'':v.flavour, cakeMessage:v.cakeType==='Hamper'?'':v.cakeMessage, quantity:pieceProduct?Number(v.quantity):1, cakeWeight:pieceProduct||v.cakeType==='Hamper'?'':v.cakeWeight, status } as CakeOrder;
     try { if(id) await this.data.updateOrder(record); else { const {id:_,...newOrder}=record; await this.data.addOrder(newOrder); } this.notify(id ? 'Order updated successfully.' : 'Cake order added successfully.'); this.closeForm(); } catch { this.notify('Unable to save order. Check Firebase access.', true); }
   }
-  openNewOrder():void { this.closeForm(); this.clientMode.set(this.data.clients().length?'existing':'new'); this.showForm.set(true); }
-  edit(order:CakeOrder):void { this.editingId.set(order.id); this.form.reset({...order,deliveryExpense:order.deliveryExpense??((order.status==='Delivered'||order.status==='Closed')&&order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0),paymentDate:this.today()}); this.onProductTypeChangeValue(order.cakeType); this.refreshRequiredFields(); this.clientMode.set('new'); this.clientSearch.set(''); this.clientPickerOpen.set(false); this.showForm.set(true); window.scrollTo({top:80,behavior:'smooth'}); }
+  openNewOrder():void { this.modalReturnFocus=document.activeElement as HTMLElement; this.closeForm(); this.clientMode.set(this.data.clients().length?'existing':'new'); this.showForm.set(true); this.focusOrderDialog(); }
+  edit(order:CakeOrder):void { this.modalReturnFocus=document.activeElement as HTMLElement; this.editingId.set(order.id); this.resetOrderForm(); this.showForm.set(true); this.focusOrderDialog(); }
+  resetOrderForm():void {
+    const order=this.data.orders().find(item=>item.id===this.editingId());
+    this.form.reset(order?{...order,deliveryExpense:order.deliveryExpense??((order.status==='Delivered'||order.status==='Closed')&&order.setup==='Delivery'&&order.deliveryBookedBy==='Us'?order.deliveryCost:0),paymentDate:this.today()}:this.defaults());
+    this.onProductTypeChangeValue(order?.cakeType??'');
+    this.refreshRequiredFields();
+    this.clientMode.set(order?'new':this.data.clients().length?'existing':'new');
+    this.clientSearch.set('');this.clientPickerOpen.set(false);
+    document.querySelector<HTMLElement>('.order-editor-form')?.scrollTo({top:0,behavior:'smooth'});
+  }
+  private focusOrderDialog():void { requestAnimationFrame(()=>document.querySelector<HTMLElement>('.order-editor-close')?.focus({preventScroll:true})); }
+  onOrderDialogKeydown(event:KeyboardEvent):void {
+    if(event.key==='Escape'&&!this.deliveryModal()){event.preventDefault();this.closeForm();return;}
+    if(event.key!=='Tab')return;
+    const controls=[...document.querySelectorAll<HTMLElement>('.order-editor-dialog button, .order-editor-dialog input, .order-editor-dialog select, .order-editor-dialog textarea')].filter(item=>!item.hasAttribute('disabled')&&item.getClientRects().length>0);
+    if(!controls.length)return;
+    const first=controls[0],last=controls.at(-1);
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+  }
   requestRemove(order:CakeOrder):void { this.deleteTarget.set(order); }
   async confirmRemove():Promise<void> {
     const order=this.deleteTarget(); if(!order) return;
@@ -75,7 +95,7 @@ export class Orders {
     try { await this.data.deleteOrder(order.id); this.notify(`${order.customer}'s order deleted.`); }
     catch { this.notify('Unable to delete order.', true); }
   }
-  closeForm():void { this.showForm.set(false); this.editingId.set(null); this.clientSearch.set(''); this.clientPickerOpen.set(false); this.form.reset(this.defaults()); this.refreshRequiredFields(); }
+  closeForm():void { const wasOpen=this.showForm(); this.showForm.set(false); this.editingId.set(null); this.clientSearch.set(''); this.clientPickerOpen.set(false); this.form.reset(this.defaults()); this.refreshRequiredFields(); if(wasOpen){const returnFocus=this.modalReturnFocus;this.modalReturnFocus=null;requestAnimationFrame(()=>{if(returnFocus?.isConnected)returnFocus.focus({preventScroll:true});});} }
   updateClientSearch(event:Event):void { this.clientSearch.set((event.target as HTMLInputElement).value); this.form.patchValue({customer:'',phone:'',address:''}); this.clientPickerOpen.set(true); }
   selectClient(client:ClientHistory):void { this.form.patchValue({customer:client.name,phone:client.phone,address:client.address,location:client.location,residentReferral:client.residentReferral}); this.clientSearch.set(`${client.name} · ${client.phone}`); this.clientPickerOpen.set(false); }
   useNewClient():void { const name=this.form.controls.customer.value?'':this.clientSearch().trim(); this.clientMode.set('new'); this.clientPickerOpen.set(false); this.form.patchValue({customer:name,phone:'',address:''}); }
