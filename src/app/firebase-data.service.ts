@@ -10,12 +10,14 @@ import {
   doc,
   getFirestore,
   onSnapshot,
+  runTransaction,
   setDoc,
   updateDoc,
 } from 'firebase/firestore';
 
 export type ExpenseType = 'cake' | 'home';
 export type OrderStatus = 'Confirmed' | 'In progress' | 'Ready' | 'Delivered' | 'Closed';
+export interface OrderPayment { id: string; amount: number; date: string; type: 'Advance' | 'Delivery' | 'Other' | 'Correction'; }
 
 export interface Expense {
   id: string; name: string; amount: number; date: string; paymentMode: string; paidBy: string; type: ExpenseType; tripId?: string;
@@ -24,18 +26,19 @@ export interface Trip { id: string; name: string; destination: string; startDate
 
 export interface CakeOrder {
   id: string; customer: string; phone: string; address: string; occasion: string;
+  location: 'Inside complex' | 'Outside complex'; residentReferral: boolean;
   flavour: string; cakeType: string; setup: 'Delivery' | 'Cake setup' | 'Self pickup'; deliveredBy: string;
-  quantity: number; cakeWeight: string; cakeMessage: string; amount: number; advancePaid: number;
+  quantity: number; cakeWeight: string; cakeMessage: string; amount: number; advancePaid: number; payments?: OrderPayment[];
   deliveryAmount: number; deliveryMethod: 'Cab' | 'Delivery man' | 'Porter'; deliveryFeeType: 'Free' | 'Paid'; deliveryBookedBy: 'Client' | 'Us'; deliveryCost: number; extraExpenses: number; dueDate: string; status: OrderStatus;
 }
 
 export interface ClientHistory {
-  key: string; profileId?: string; name: string; phone: string; address: string; orderCount: number;
+  key: string; profileId?: string; name: string; phone: string; address: string; location: 'Inside complex' | 'Outside complex'; residentReferral: boolean; orderCount: number;
   lifetimeValue: number; lastOrderDate: string; orders: CakeOrder[];
 }
 
 export interface ClientProfile {
-  id: string; name: string; phone: string; address: string; hidden: boolean;
+  id: string; name: string; phone: string; address: string; location: 'Inside complex' | 'Outside complex'; residentReferral: boolean; hidden: boolean;
 }
 
 export interface MessageTemplate {
@@ -83,14 +86,14 @@ export class FirebaseDataService {
     const hiddenKeys = new Set(this.clientProfiles().filter(profile => profile.hidden).map(profile => this.clientKey(profile.name, profile.phone)));
     for (const profile of this.clientProfiles().filter(profile => !profile.hidden)) {
       const key = this.clientKey(profile.name, profile.phone);
-      grouped.set(key, { key, profileId: profile.id, name: profile.name.trim(), phone: profile.phone.trim(), address: profile.address.trim(), orderCount: 0, lifetimeValue: 0, lastOrderDate: '', orders: [] });
+      grouped.set(key, { key, profileId: profile.id, name: profile.name.trim(), phone: profile.phone.trim(), address: profile.address.trim(), location:profile.location??'Outside complex', residentReferral:profile.residentReferral??false, orderCount: 0, lifetimeValue: 0, lastOrderDate: '', orders: [] });
     }
     const orders = [...this.orders()].sort((a, b) => b.dueDate.localeCompare(a.dueDate));
     for (const order of orders) {
       const key = this.clientKey(order.customer, order.phone);
       if (hiddenKeys.has(key)) continue;
       const client = grouped.get(key) ?? {
-        key, name: order.customer.trim(), phone: order.phone.trim(), address: order.address.trim(),
+        key, name: order.customer.trim(), phone: order.phone.trim(), address: order.address.trim(), location:order.location??'Outside complex', residentReferral:order.residentReferral??false,
         orderCount: 0, lifetimeValue: 0, lastOrderDate: order.dueDate, orders: [],
       };
       client.orderCount += 1;
@@ -169,12 +172,12 @@ export class FirebaseDataService {
       if (hiddenMatch) await setDoc(doc(db, 'clients', hiddenMatch.id), data); else await addDoc(collection(db, 'clients'), data);
     });
   }
-  async updateClient(client: Pick<ClientProfile, 'id' | 'name' | 'phone' | 'address'>): Promise<void> {
+  async updateClient(client: Pick<ClientProfile, 'id' | 'name' | 'phone' | 'address' | 'location' | 'residentReferral'>): Promise<void> {
     await this.runOperation('Updating client…', async () => { const db = await this.getDb(); const { id, ...data } = client; await setDoc(doc(db, 'clients', id), { ...data, hidden: false }); });
   }
-  async hideClient(client: Pick<ClientHistory, 'profileId' | 'name' | 'phone' | 'address'>): Promise<void> {
+  async hideClient(client: Pick<ClientHistory, 'profileId' | 'name' | 'phone' | 'address' | 'location' | 'residentReferral'>): Promise<void> {
     await this.runOperation('Removing client…', async () => {
-      const db = await this.getDb(); const data = { name: client.name, phone: client.phone, address: client.address, hidden: true };
+      const db = await this.getDb(); const data = { name: client.name, phone: client.phone, address: client.address, location:client.location, residentReferral:client.residentReferral, hidden: true };
       if (client.profileId) await setDoc(doc(db, 'clients', client.profileId), data); else await addDoc(collection(db, 'clients'), data);
     });
   }
@@ -188,10 +191,22 @@ export class FirebaseDataService {
     await this.runOperation('Updating order status…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { status: nextStatus }); });
     return nextStatus;
   }
-  async markOrderFullyPaid(id: string): Promise<void> {
-    const order = this.orders().find(item => item.id === id); if (!order) throw new Error('Order not found.');
-    const status: OrderStatus = order.status === 'Delivered' ? 'Closed' : order.status;
-    await this.runOperation('Completing payment…', async () => { const db = await this.getDb(); await updateDoc(doc(db, 'orders', id), { advancePaid: order.amount + order.deliveryAmount, status }); });
+  async recordOrderPayment(id: string, payment: OrderPayment): Promise<void> {
+    await this.runOperation('Recording payment…', async () => {
+      const db = await this.getDb();
+      await runTransaction(db, async transaction => {
+        const orderRef = doc(db, 'orders', id);
+        const snapshot = await transaction.get(orderRef);
+        if (!snapshot.exists()) throw new Error('Order not found.');
+        const order = snapshot.data();
+        const total = Number(order['amount'] ?? 0) + Number(order['deliveryAmount'] ?? 0);
+        const paid = Number(order['advancePaid'] ?? 0);
+        if (!Number.isFinite(payment.amount) || payment.amount <= 0 || payment.amount > total - paid) throw new Error('Payment exceeds the balance due.');
+        const nextPaid = paid + payment.amount;
+        const status: OrderStatus = (order['status'] === 'Delivered' || order['status'] === 'Closed') && nextPaid >= total ? 'Closed' : order['status'];
+        transaction.update(orderRef, { advancePaid: nextPaid, payments: [...(Array.isArray(order['payments']) ? order['payments'] : []), payment], status });
+      });
+    });
   }
 
   private async initializeAuth(): Promise<void> {
@@ -224,7 +239,7 @@ export class FirebaseDataService {
       this.unsubscribeListeners.push(onSnapshot(collection(db,'trips'),snapshot=>{this.trips.set(snapshot.docs.map(item=>({id:item.id,...item.data()}) as Trip));},error=>this.reportError(error)));
       this.unsubscribeListeners.push(onSnapshot(collection(db,'tripExpenses'),snapshot=>{this.tripExpenses.set(snapshot.docs.map(item=>({id:item.id,...item.data()}) as Expense));},error=>this.reportError(error)));
       this.unsubscribeListeners.push(onSnapshot(collection(db, 'orders'), snapshot => {
-        this.orders.set(snapshot.docs.map(item => { const data=item.data(); const bookedBy=data['deliveryBookedBy'] ?? (data['deliveryPayment']==='Cab from us'?'Us':'Client'); const cost=Number(data['deliveryCost'] ?? data['deliveryAmount'] ?? 0); return ({ id:item.id, ...data, deliveryMethod:data['deliveryMethod'] ?? 'Cab', deliveryFeeType:data['deliveryFeeType'] ?? (cost>0?'Paid':'Free'), deliveryBookedBy:bookedBy, deliveryCost:cost, status:data['status']==='Enquiry'?'Confirmed':data['status'] }) as CakeOrder; })); this.markLoaded('orders');
+        this.orders.set(snapshot.docs.map(item => { const data=item.data(); const bookedBy=data['deliveryBookedBy'] ?? (data['deliveryPayment']==='Cab from us'?'Us':'Client'); const cost=Number(data['deliveryCost'] ?? data['deliveryAmount'] ?? 0); const fullyPaid=Number(data['advancePaid'] ?? 0)>=Number(data['amount'] ?? 0)+Number(data['deliveryAmount'] ?? 0); const status=data['status']==='Enquiry'?'Confirmed':data['status']==='Delivered'&&fullyPaid?'Closed':data['status']; return ({ id:item.id, ...data, location:data['location'] ?? 'Outside complex', residentReferral:data['residentReferral'] ?? false, deliveryMethod:data['deliveryMethod'] ?? 'Cab', deliveryFeeType:data['deliveryFeeType'] ?? (cost>0?'Paid':'Free'), deliveryBookedBy:bookedBy, deliveryCost:cost, status }) as CakeOrder; })); this.markLoaded('orders');
       }, error => this.reportError(error)));
       this.unsubscribeListeners.push(onSnapshot(collection(db, 'clients'), snapshot => {
         this.clientProfiles.set(snapshot.docs.map(item => ({ id: item.id, ...item.data() }) as ClientProfile));

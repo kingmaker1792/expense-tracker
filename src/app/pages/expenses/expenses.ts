@@ -1,10 +1,13 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { Expense, ExpenseType, FirebaseDataService } from '../../firebase-data.service';
 
 @Component({ selector: 'app-expenses', imports: [ReactiveFormsModule], templateUrl: './expenses.html' })
 export class Expenses {
   private readonly fb = inject(FormBuilder); readonly data = inject(FirebaseDataService);
+  private readonly route=inject(ActivatedRoute);
+  constructor(){this.route.queryParamMap.subscribe(params=>{if(params.get('type')==='home')this.expenseType.set('home');else if(params.get('type')==='cake')this.expenseType.set('cake');});}
   readonly expenseType = signal<ExpenseType>('cake'); readonly showForm = signal(false); readonly showFrequentManager = signal(false); readonly frequentName = signal(''); readonly editingId = signal<string|null>(null); readonly toast = signal(''); readonly deleteTarget = signal<{ kind:'expense'; item:Expense }|{ kind:'frequent'; name:string }|null>(null);
   readonly search = signal(''); readonly personFilter = signal('all'); readonly modeFilter = signal('all'); readonly months = signal<1|3|6|12|'all'>(1); readonly selectedMonth = signal('');
   readonly form = this.fb.nonNullable.group({ preset: [''], customName: [''], amount: [null as number | null, [Validators.required, Validators.min(1)]], date: [this.today(), Validators.required], paymentMode: ['GPay', Validators.required], paidBy: ['Sonam', Validators.required] });

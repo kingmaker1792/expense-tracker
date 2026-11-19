@@ -9,7 +9,8 @@
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "deploy:firebase:hosting": "npm run build && firebase deploy --only hosting:mannam-expense --project cognylync --config firebase.json",
-    "deploy:firebase:rules": "firebase deploy --only firestore:rules --project cognylync --config firebase.rules.json"
+    "deploy:firebase:rules": "firebase deploy --only firestore:rules --project cognylync --config firebase.rules.json",
+    "deploy:firebase:reminders": "firebase deploy --only functions:remindTomorrowOrders,functions:remindTodayOrders --project cognylync --config firebase.functions.json"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
